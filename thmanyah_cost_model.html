@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thmanyah Streaming Cost Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── Tokens ── */
+:root[data-theme="dark"]{
+  --bg:#0f172a;
+  --surface:#1e293b;
+  --surface2:#162032;
+  --border:#2e4060;
+  --border2:#3d5470;
+  --text:#f1f5f9;
+  --muted:#94a3b8;
+  --dim:#64748b;
+  --accent:#3b82f6;
+  --accent-bg:rgba(59,130,246,.1);
+  --accent-border:rgba(59,130,246,.35);
+  --green:#10b981;
+  --green-bg:rgba(16,185,129,.1);
+  --green-border:rgba(16,185,129,.3);
+  --yellow:#f59e0b;
+  --yellow-bg:rgba(245,158,11,.1);
+  --yellow-border:rgba(245,158,11,.3);
+  --red:#ef4444;
+  --red-bg:rgba(239,68,68,.1);
+  --red-border:rgba(239,68,68,.3);
+  --purple:#a78bfa;
+  --purple-bg:rgba(167,139,250,.1);
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}
+:root[data-theme="light"]{
+  --bg:#f1f5f9;
+  --surface:#ffffff;
+  --surface2:#f8fafc;
+  --border:#e2e8f0;
+  --border2:#cbd5e1;
+  --text:#0f172a;
+  --muted:#64748b;
+  --dim:#94a3b8;
+  --accent:#2563eb;
+  --accent-bg:rgba(37,99,235,.06);
+  --accent-border:rgba(37,99,235,.3);
+  --green:#059669;
+  --green-bg:rgba(5,150,105,.06);
+  --green-border:rgba(5,150,105,.25);
+  --yellow:#d97706;
+  --yellow-bg:rgba(217,119,6,.06);
+  --yellow-border:rgba(217,119,6,.25);
+  --red:#dc2626;
+  --red-bg:rgba(220,38,38,.06);
+  --red-border:rgba(220,38,38,.25);
+  --purple:#7c3aed;
+  --purple-bg:rgba(124,58,237,.06);
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.06);
+}
+
+/* ── Base ── */
+html{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;transition:background .2s,color .2s}
+html[dir="rtl"]{font-family:'Inter',Tahoma,sans-serif}
+
+/* ── Header ── */
+.hdr{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:14px;position:sticky;top:0;z-index:100}
+.hdr-brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.logo{width:28px;height:28px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+.hdr-name{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-sep{color:var(--border2);font-size:16px;flex-shrink:0}
+.hdr-sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-actions{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Tabs ── */
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 20px}
+.tab{padding:10px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── Layout ── */
+.page{max-width:1400px;margin:0 auto;padding:16px}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.two-col{display:grid;grid-template-columns:420px 1fr;gap:14px;align-items:start}
+
+/* ── Scrollable panels ── */
+.form-scroll{max-height:calc(100vh - 108px);overflow-y:auto;padding-right:2px}
+.form-scroll::-webkit-scrollbar{width:4px}
+.form-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.res-scroll{max-height:calc(100vh - 108px);overflow-y:auto}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.card+.card{margin-top:10px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.card-meta{font-size:10px;color:var(--dim)}
+.card-body{padding:14px}
+
+/* ── Form elements ── */
+.fg{margin-bottom:10px}
+.fg:last-child{margin-bottom:0}
+label.lbl{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.hint{font-size:10px;color:var(--dim);margin-top:3px;line-height:1.5}
+input[type="text"],input[type="number"],input[type="date"],select{
+  width:100%;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;outline:none;
+  transition:border-color .15s,box-shadow .15s
+}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.prefix-wrap{position:relative}
+.prefix{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--muted);pointer-events:none}
+.prefix-wrap input{padding-left:20px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* ── Radio pills ── */
+.pills{display:flex;gap:5px}
+.pill{flex:1;position:relative}
+.pill input{position:absolute;opacity:0;width:0;height:0}
+.pill label{display:flex;align-items:center;justify-content:center;padding:6px 8px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);background:var(--surface2);transition:all .15s;text-align:center}
+.pill input:checked+label{border-color:var(--accent);background:var(--accent-bg);color:var(--accent)}
+
+/* ── Collapsible ── */
+.coll{max-height:0;overflow:hidden;opacity:0;transition:max-height .3s ease,opacity .25s ease}
+.coll.open{max-height:600px;opacity:1}
+
+/* ── Divider label ── */
+.section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:12px 0 8px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── Buttons ── */
+.btn-primary{width:100%;padding:10px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;margin-top:12px}
+.btn-primary:hover{opacity:.9;transform:translateY(-1px)}
+.btn-row{display:flex;gap:6px;margin-top:6px}
+.btn-sec{flex:1;padding:7px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-sec:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.badge-wa{background:var(--yellow-bg);color:var(--yellow);border:1px solid var(--yellow-border)}
+.badge-4k{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(167,139,250,.3)}
+.badge-ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-warn{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+
+/* ── Alerts ── */
+.alert{display:flex;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;line-height:1.55;margin-top:8px}
+.alert-info{background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--muted)}
+.alert-warn{background:var(--yellow-bg);border:1px solid var(--yellow-border);color:var(--muted)}
+.alert-ok{background:var(--green-bg);border:1px solid var(--green-border);color:var(--muted)}
+.alert-red{background:var(--red-bg);border:1px solid var(--red-border);color:var(--muted)}
+
+/* ── Empty state ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:380px;gap:12px;color:var(--dim);text-align:center;border:1px dashed var(--border);border-radius:10px;padding:40px}
+.empty svg{opacity:.25}
+.empty p{font-size:12px;color:var(--muted);max-width:240px;line-height:1.7}
+
+/* ── Results ── */
+.res-show{display:block}.res-hide{display:none}
+
+/* ── Total hero ── */
+.total-hero{border:1px solid var(--accent-border);border-radius:10px;background:var(--accent-bg);padding:20px;text-align:center;margin-bottom:12px}
+.total-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);margin-bottom:6px}
+.total-amount{font-size:42px;font-weight:700;letter-spacing:-.02em;color:var(--text);line-height:1}
+.total-name{font-size:12px;color:var(--muted);margin-top:6px}
+.total-meta{display:flex;justify-content:center;gap:20px;margin-top:14px;flex-wrap:wrap}
+.total-stat{text-align:center}
+.total-stat-val{font-size:18px;font-weight:600;color:var(--text);line-height:1.2}
+.total-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+
+/* ── KPI grid ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.kpi-val{font-size:16px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:2px}
+.kpi-lbl{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+
+/* ── Breakdown rows ── */
+.bk-row{display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.bk-row:last-child{border-bottom:none}
+.bk-swatch{width:8px;height:8px;border-radius:2px;flex-shrink:0;margin-right:8px}
+.bk-name{font-size:12px;color:var(--text);flex:1}
+.bk-sub{font-size:10px;color:var(--muted)}
+.bk-track{width:80px;height:3px;background:var(--border);border-radius:2px;flex-shrink:0;margin:0 10px}
+.bk-fill{height:100%;border-radius:2px}
+.bk-amount{font-size:12px;font-weight:600;color:var(--text);min-width:72px;text-align:right}
+.bk-pct{font-size:10px;color:var(--muted);min-width:38px;text-align:right}
+
+/* ── Chart cards ── */
+.chart-grid{display:grid;grid-template-columns:1fr 220px;gap:10px;margin-bottom:10px;align-items:start}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px}
+.chart-card+.chart-card{margin-top:10px}
+.chart-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px}
+
+/* ── CDN regions ── */
+.cdn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.cdn-region{border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--surface2)}
+.cdn-region-hdr{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.cdn-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cdn-region-name{font-size:11px;font-weight:600;color:var(--text)}
+.cdn-region-rate{font-size:10px;color:var(--dim);margin-left:auto}
+.cdn-gb{font-size:20px;font-weight:700;color:var(--text);line-height:1.2;margin-bottom:2px}
+.cdn-cost{font-size:13px;font-weight:600;color:var(--accent)}
+.cdn-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── Sub-breakdown table ── */
+.sub-table{font-size:11px}
+.sub-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted var(--border);color:var(--muted)}
+.sub-row:last-child{border-bottom:none;font-weight:600;color:var(--text);font-size:12px;padding-top:7px}
+.sub-row b{color:var(--text)}
+
+/* ── Historical tables ── */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{text-align:left;padding:8px 10px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+.data-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.data-table tr:last-child td{border-bottom:none}
+.data-table .num{font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+.data-table .total-row td{font-weight:700;color:var(--text)}
+
+/* ── Monthly results ── */
+.monthly-grid{display:grid;grid-template-columns:400px 1fr;gap:14px;align-items:start}
+
+/* ── Responsive ── */
+@media(max-width:1080px){.two-col,.monthly-grid{grid-template-columns:380px 1fr}}
+@media(max-width:900px){
+  .two-col,.monthly-grid{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .cdn-grid,.chart-grid{grid-template-columns:1fr}
+  .hdr-sub{display:none}
+}
+@media print{
+  .hdr-actions,.tabs,.form-scroll,.btn-primary,.btn-row{display:none!important}
+  .two-col,.monthly-grid{grid-template-columns:1fr}
+  .res-scroll{max-height:none;overflow:visible}
+  :root[data-theme="dark"]{--bg:#fff;--surface:#fff;--surface2:#f5f5f5;--border:#ddd;--text:#000;--muted:#555;--dim:#888;--accent:#1d4ed8}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="logo">ث</div>
+    <span class="hdr-name" data-i18n="headerTitle">Thmanyah Streaming Cost Model</span>
+    <span class="hdr-sep">·</span>
+    <span class="hdr-sub">CloudFront · MediaConnect · MediaLive · MediaPackage</span>
+  </div>
+  <div class="hdr-actions">
+    <button class="icon-btn" onclick="toggleLang()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      <span id="langBtn">العربية</span>
+    </button>
+    <button class="icon-btn" onclick="toggleTheme()">
+      <svg id="themeIcon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <span id="themeBtn" data-i18n="lightMode">Light</span>
+    </button>
+    <button class="icon-btn" onclick="window.print()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      <span data-i18n="print">Print</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══ TABS ══ -->
+<nav class="tabs">
+  <div class="tab active" data-tab="estimator" data-i18n="tabEstimator">Match Estimator</div>
+  <div class="tab" data-tab="monthly" data-i18n="tabMonthly">Monthly Forecast</div>
+  <div class="tab" data-tab="historical" data-i18n="tabHistorical">Historical Data</div>
+</nav>
+
+<div class="page">
+
+<!-- ══ TAB 1: MATCH ESTIMATOR ══ -->
+<div class="tab-pane active" id="tab-estimator">
+  <div class="two-col">
+
+    <!-- FORM -->
+    <div class="form-scroll">
+
+      <!-- Match Info -->
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title" data-i18n="matchInfo">Match Information</span>
+        </div>
+        <div class="card-body">
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="eventName" data-i18n="eventName">Event Name</label>
+              <input type="text" id="eventName" placeholder="Al Hilal vs Al Nassr">
+            </div>
+            <div class="fg">
+              <label class="lbl" for="matchDate" data-i18n="matchDate">Date</label>
+              <input type="date" id="matchDate">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="streamHours" data-i18n="duration">Duration (hrs)</label>
+              <input type="number" id="streamHours" value="6" min="1" max="24" step="0.5">
+              <div class="hint" data-i18n="durationHint">Includes ~1hr pre-match</div>
+            </div>
+            <div class="fg">
+              <label class="lbl" for="concurrentMatches" data-i18n="concurrent">Concurrent Matches</label>
+              <input type="number" id="concurrentMatches" value="1" min="1" max="20">
+            </div>
+          </div>
+          <div class="fg">
+            <label class="lbl" data-i18n="matchType">Match Type</label>
+            <div class="pills">
+              <div class="pill">
+                <input type="radio" name="matchType" id="typeStd" value="standard" checked onchange="onMatchTypeChange()">
+                <label for="typeStd" data-i18n="typeStd">Standard (FTA + SPL)</label>
+              </div>
+              <div class="pill">
+                <input type="radio" name="matchType" id="type4k" value="4k" onchange="onMatchTypeChange()">
+                <label for="type4k">4K Match</label>
+              </div>
+            </div>
+          </div>
+          <div class="coll" id="sec4k">
+            <div class="alert alert-warn" style="margin-top:4px;margin-bottom:8px">
+              <span>⚡</span>
+              <span data-i18n="fourKAlert">4K adds CH10_SPL + CH11_SPL ($50.874/hr combined) to MediaLive, and requires LargeInstance flows in MediaConnect.</span>
+            </div>
+            <div class="fg" style="margin-bottom:0">
+              <label class="lbl" for="liFlows">
+                <span data-i18n="liFlows">LargeInstance Flows</span>
+                <span class="badge badge-wa">WA</span>
+              </label>
+              <div class="pills">
+                <div class="pill"><input type="radio" name="liFlows" id="li1" value="1" checked><label for="li1">1 Flow</label></div>
+                <div class="pill"><input type="radio" name="liFlows" id="li2" value="2"><label for="li2">2 Flows</label></div>
+              </div>
+              <div class="hint" data-i18n="liHint">1–2 LargeInstance flows required for UHD feed. Pending confirmation.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MediaLive -->
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title">MediaLive</span>
+          <span class="card-meta">$3,198/hr FTA · $12.774/hr SPL · CH10+CH11 $50.874/hr 4K</span>
+        </div>
+        <div class="card-body">
+          <div class="fg">
+            <label class="lbl" for="mlCostPerMatch">
+              <span data-i18n="mlPerMatch">Cost Per Match</span>
+              <span class="badge badge-wa">Working Assumption</span>
+            </label>
+            <div class="prefix-wrap">
+              <span class="prefix">$</span>
+              <input type="number" id="mlCostPerMatch" value="733" min="0" step="1">
+            </div>
+            <div class="hint" data-i18n="mlHint">Channels run 24/7. Derived from monthly total ÷ match count. Apr: $764 · May: $703 · Avg: $733.</div>
+          </div>
+          <div class="alert alert-info" id="ml4kInfo" style="display:none">
+            <span>ℹ</span>
+            <span data-i18n="ml4kInfo">4K adds CH10_SPL + CH11_SPL = $50.874/hr × stream hours on top of the standard per-match base.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MediaConnect -->
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title">MediaConnect</span>
+          <span class="card-meta">$0.1934/hr std · $1.368/hr LargeInst</span>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info" style="margin-top:0">
+            <span>ℹ</span>
+            <div>
+              <span data-i18n="mcNote">Variable component: $112/match day. Fixed baseline ($3,257/month) is excluded — shown in Monthly Forecast only.</span>
+              <span class="badge badge-wa" style="margin-left:4px">WA</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MediaPackage -->
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title">MediaPackage</span>
+          <span class="card-meta">$0.036/GB ingest · $0.048/GB origination</span>
+        </div>
+        <div class="card-body">
+          <div class="fg">
+            <label class="lbl" data-i18n="inputMode">Input Mode</label>
+            <div class="pills">
+              <div class="pill">
+                <input type="radio" name="mpMode" id="mpAuto" value="auto" checked onchange="onMpModeChange()">
+                <label for="mpAuto" data-i18n="modeAuto">Auto (defaults)</label>
+              </div>
+              <div class="pill">
+                <input type="radio" name="mpMode" id="mpManual" value="manual" onchange="onMpModeChange()">
+                <label for="mpManual" data-i18n="modeManual">Manual</label>
+              </div>
+              <div class="pill">
+                <input type="radio" name="mpMode" id="mpHistorical" value="historical" onchange="onMpModeChange()">
+                <label for="mpHistorical" data-i18n="modeHistorical">Historical</label>
+              </div>
+            </div>
+          </div>
+          <!-- Historical mode fields -->
+          <div class="coll" id="mpHistFields">
+            <div class="row2" style="margin-top:8px">
+              <div class="fg">
+                <label class="lbl" for="mpDailyCost" data-i18n="mpDailyCostLbl">Daily MP Cost ($)</label>
+                <input type="number" id="mpDailyCost" placeholder="e.g. 483.18" min="0" step="0.01">
+              </div>
+              <div class="fg">
+                <label class="lbl" for="mpViewerShare" data-i18n="mpViewerShareLbl">Viewer Share (%)</label>
+                <input type="number" id="mpViewerShare" value="100" min="1" max="100">
+              </div>
+            </div>
+            <div class="hint" data-i18n="mpHistHint">Match cost = daily cost × viewer share %. Use when Cost Explorer daily figure is known. Apply % directly to daily total — do not divide by match count first.</div>
+          </div>
+          <!-- Forecast mode fields (auto / manual) -->
+          <div id="mpGbFields">
+            <div class="row2" style="margin-top:8px">
+              <div class="fg">
+                <label class="lbl" for="ingestGB" data-i18n="ingestGB">Ingest GB</label>
+                <input type="number" id="ingestGB" value="1230" min="0" step="100">
+                <div class="hint" data-i18n="ingestHint">Default: 1,230 GB/match</div>
+              </div>
+              <div class="fg">
+                <label class="lbl" for="originationGB" data-i18n="origGB">Origination GB</label>
+                <input type="number" id="originationGB" value="820" min="0" step="100">
+                <div class="hint" data-i18n="origHint">Default: 820 GB/match</div>
+              </div>
+            </div>
+            <div class="hint" id="mpAutoHint" data-i18n="mpAutoHint">Auto: using historical per-match defaults (1,230 / 820 GB). Edit to override.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CloudFront -->
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title">CloudFront CDN</span>
+          <span class="card-meta">ME $0.007/GB · EU $0.004/GB</span>
+        </div>
+        <div class="card-body">
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="meGB" data-i18n="meGB">ME (Bahrain) GB</label>
+              <input type="number" id="meGB" placeholder="e.g. 214000" min="0" step="100">
+              <div class="hint" data-i18n="meHint">Primary viewer delivery (MEA)</div>
+            </div>
+            <div class="fg">
+              <label class="lbl" for="euGB" data-i18n="euGB">EU (Ireland) GB</label>
+              <input type="number" id="euGB" placeholder="e.g. 716000" min="0" step="100">
+              <div class="hint" data-i18n="euHint">Origin egress + backup</div>
+            </div>
+          </div>
+          <details style="margin-top:8px">
+            <summary style="font-size:11px;color:var(--muted);cursor:pointer;padding:3px 0;user-select:none" data-i18n="gbEstHelper">▸ Estimate GB from viewer data</summary>
+            <div style="padding:10px 0 2px">
+              <div class="row2" style="margin-bottom:8px">
+                <div class="fg" style="margin-bottom:0">
+                  <label class="lbl" for="estViewers" data-i18n="estViewers">Viewers</label>
+                  <input type="number" id="estViewers" placeholder="378210">
+                </div>
+                <div class="fg" style="margin-bottom:0">
+                  <label class="lbl" for="estWatch" data-i18n="estWatch">Avg Watch (min)</label>
+                  <input type="number" id="estWatch" placeholder="115">
+                </div>
+              </div>
+              <div class="row2" style="margin-bottom:8px">
+                <div class="fg" style="margin-bottom:0">
+                  <label class="lbl" for="estBitrate" data-i18n="estBitrate">Avg Bitrate (Mbps)</label>
+                  <input type="number" id="estBitrate" value="3" step="0.1">
+                  <div class="hint">~3 Mbps actual (ABR)</div>
+                </div>
+                <div class="fg" style="margin-bottom:0">
+                  <label class="lbl" for="estMePct" data-i18n="estMePct">ME % of traffic</label>
+                  <input type="number" id="estMePct" value="23" min="0" max="100">
+                  <div class="hint">Normal ops: 70–80% ME</div>
+                </div>
+              </div>
+              <button type="button" class="btn-sec" style="width:100%;margin-top:0" onclick="estimateGB()" data-i18n="applyGB">Apply → fill GB fields</button>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Viewer Metrics -->
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title" data-i18n="viewerMetrics">Viewer Metrics</span>
+          <span class="card-meta" data-i18n="optional">optional</span>
+        </div>
+        <div class="card-body">
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="viewers" data-i18n="viewers">Unique Viewers</label>
+              <input type="number" id="viewers" placeholder="e.g. 378210">
+            </div>
+            <div class="fg">
+              <label class="lbl" for="avgWatch" data-i18n="avgWatch">Avg Watch (min)</label>
+              <input type="number" id="avgWatch" placeholder="e.g. 114.76">
+            </div>
+          </div>
+          <div class="hint" data-i18n="viewerHint">Enables per-viewer and per-viewing-hour cost metrics in results.</div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="calculateMatch()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
+        <span data-i18n="calculate">Calculate Cost</span>
+      </button>
+      <div class="btn-row">
+        <button class="btn-sec" onclick="loadDemo()" data-i18n="demo">⚽ Demo: Al Hilal vs Al Nassr</button>
+        <button class="btn-sec" onclick="clearAll()" data-i18n="clear">✕ Clear</button>
+      </div>
+    </div><!-- /form-scroll -->
+
+    <!-- RESULTS -->
+    <div class="res-scroll">
+      <div class="empty" id="emptyState">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <p data-i18n="emptyMsg">Fill in the match details on the left and click Calculate Cost to see a full breakdown with charts.</p>
+      </div>
+      <div id="resultsArea" style="display:none">
+
+        <div class="total-hero" id="heroCard"></div>
+
+        <div id="kpiRow"></div>
+
+        <!-- Breakdown + Donut -->
+        <div class="chart-grid">
+          <div class="card">
+            <div class="card-hdr"><span class="card-title" data-i18n="breakdown">Cost Breakdown</span></div>
+            <div class="card-body" id="breakdownBody"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-lbl" data-i18n="distribution">Distribution</div>
+            <div style="position:relative;height:180px"><canvas id="chartDonut"></canvas></div>
+          </div>
+        </div>
+
+        <!-- CDN Detail -->
+        <div class="card" id="cdnCard" style="margin-bottom:10px">
+          <div class="card-hdr"><span class="card-title" data-i18n="cdnDetail">CloudFront CDN Breakdown</span></div>
+          <div class="card-body">
+            <div class="cdn-grid" id="cdnRegions"></div>
+            <div style="height:140px;margin-top:8px"><canvas id="chartCDN"></canvas></div>
+          </div>
+        </div>
+
+        <!-- MediaLive Detail -->
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-hdr"><span class="card-title" data-i18n="mlDetail">MediaLive Detail</span></div>
+          <div class="card-body">
+            <div id="mlDetail"></div>
+            <div style="height:110px;margin-top:10px"><canvas id="chartML"></canvas></div>
+          </div>
+        </div>
+
+        <!-- MediaPackage Detail -->
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-hdr"><span class="card-title" data-i18n="mpDetail">MediaPackage Detail</span></div>
+          <div class="card-body">
+            <div id="mpDetail"></div>
+            <div style="height:110px;margin-top:10px"><canvas id="chartMP"></canvas></div>
+          </div>
+        </div>
+
+      </div><!-- /resultsArea -->
+    </div><!-- /res-scroll -->
+
+  </div><!-- /two-col -->
+</div><!-- /estimator -->
+
+
+<!-- ══ TAB 2: MONTHLY FORECAST ══ -->
+<div class="tab-pane" id="tab-monthly">
+  <div class="monthly-grid">
+
+    <div class="form-scroll">
+      <div class="card">
+        <div class="card-hdr"><span class="card-title" data-i18n="monthlyTitle">Monthly Forecast Inputs</span></div>
+        <div class="card-body">
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="monthName" data-i18n="periodLabel">Month / Period</label>
+              <input type="text" id="monthName" placeholder="e.g. July 2026">
+            </div>
+            <div class="fg">
+              <label class="lbl" for="matchDays" data-i18n="matchDays">Match Days</label>
+              <input type="number" id="matchDays" value="15" min="0" max="31">
+            </div>
+          </div>
+
+          <div class="section-label" data-i18n="matchMix">Match Mix</div>
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="stdCount" data-i18n="stdCount">Standard Matches</label>
+              <input type="number" id="stdCount" value="20" min="0">
+              <div class="hint">FTA + SPL channels</div>
+            </div>
+            <div class="fg">
+              <label class="lbl" for="k4Count" data-i18n="k4Count">4K Matches</label>
+              <input type="number" id="k4Count" value="2" min="0">
+              <div class="hint">CH10 + CH11 add-on</div>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="avgHoursM" data-i18n="avgHours">Avg Stream Hours</label>
+              <input type="number" id="avgHoursM" value="6" min="1" max="24" step="0.5">
+            </div>
+            <div class="fg">
+              <label class="lbl" for="liFlowsM">LI Flows (4K)</label>
+              <input type="number" id="liFlowsM" value="1" min="1" max="2">
+            </div>
+          </div>
+
+          <div class="section-label">MediaLive</div>
+          <div class="fg">
+            <label class="lbl" for="mlPerMatchM">
+              <span data-i18n="mlPerMatch">Cost per Match</span>
+              <span class="badge badge-wa">WA</span>
+            </label>
+            <div class="prefix-wrap">
+              <span class="prefix">$</span>
+              <input type="number" id="mlPerMatchM" value="733" min="0" step="1">
+            </div>
+            <div class="hint">Baseline ~$17,096/month + this rate × match count + 4K incremental</div>
+          </div>
+
+          <div class="section-label" data-i18n="avgGBPerMatch">Avg GB per Match</div>
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="avgIngestM" data-i18n="ingestGB">Ingest GB</label>
+              <input type="number" id="avgIngestM" value="1230" min="0" step="100">
+            </div>
+            <div class="fg">
+              <label class="lbl" for="avgOrigM" data-i18n="origGB">Origination GB</label>
+              <input type="number" id="avgOrigM" value="820" min="0" step="100">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="fg">
+              <label class="lbl" for="avgMeM" data-i18n="meGB">Avg ME GB</label>
+              <input type="number" id="avgMeM" placeholder="e.g. 650000" min="0" step="1000">
+            </div>
+            <div class="fg">
+              <label class="lbl" for="avgEuM" data-i18n="euGB">Avg EU GB</label>
+              <input type="number" id="avgEuM" placeholder="e.g. 280000" min="0" step="1000">
+            </div>
+          </div>
+
+          <button class="btn-primary" onclick="calculateMonthly()">
+            <span data-i18n="calcMonthly">Forecast Monthly Cost</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="monthlyResults">
+      <div class="empty" id="monthlyEmpty">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <p data-i18n="monthlyEmptyMsg">Enter monthly parameters and click Forecast to see projected costs.</p>
+      </div>
+      <div id="monthlyContent" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB 3: HISTORICAL DATA ══ -->
+<div class="tab-pane" id="tab-historical">
+
+  <div style="margin-bottom:14px">
+    <h2 style="font-size:18px;font-weight:700;color:var(--text)" data-i18n="histTitle">Historical Data — April &amp; May 2026</h2>
+    <p style="font-size:11px;color:var(--muted);margin-top:4px" data-i18n="histSub">All figures are post-EDP-discount net costs (20% discount applied). Source: AWS Cost Explorer.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">April 2026</span>
+        <span class="card-meta">95 matches</span>
+      </div>
+      <div class="card-body">
+        <div style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:-.02em;margin-bottom:12px">$107,671</div>
+        <table class="data-table">
+          <thead><tr><th data-i18n="service">Service</th><th data-i18n="netCost">Net Cost</th><th>Share</th></tr></thead>
+          <tbody>
+            <tr><td>MediaLive</td><td class="num">$72,585</td><td>67.4%</td></tr>
+            <tr><td>CloudFront</td><td class="num">$24,467</td><td>22.7%</td></tr>
+            <tr><td>MediaConnect</td><td class="num">$5,862</td><td>5.4%</td></tr>
+            <tr><td>MediaPackage</td><td class="num">$4,757</td><td>4.4%</td></tr>
+            <tr class="total-row"><td><strong>Total</strong></td><td class="num"><strong>$107,671</strong></td><td>100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">May 2026</span>
+        <span class="card-meta">83 matches · <span class="badge badge-warn">AWS ME Incident</span></span>
+      </div>
+      <div class="card-body">
+        <div style="font-size:30px;font-weight:700;color:var(--text);letter-spacing:-.02em;margin-bottom:12px">$90,311</div>
+        <table class="data-table">
+          <thead><tr><th data-i18n="service">Service</th><th data-i18n="netCost">Net Cost</th><th>Share</th></tr></thead>
+          <tbody>
+            <tr><td>MediaLive</td><td class="num">$58,402</td><td>64.7%</td></tr>
+            <tr><td>CloudFront</td><td class="num">$24,438</td><td>27.1%</td></tr>
+            <tr><td>MediaConnect</td><td class="num">$4,186</td><td>4.6%</td></tr>
+            <tr><td>MediaPackage</td><td class="num">$3,285</td><td>3.6%</td></tr>
+            <tr class="total-row"><td><strong>Total</strong></td><td class="num"><strong>$90,311</strong></td><td>100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div class="chart-card">
+      <div class="chart-lbl" data-i18n="svcComp">Service Cost Comparison</div>
+      <div style="height:240px"><canvas id="chartHistSvc"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-lbl" data-i18n="cdnComp">CDN Regional Volume</div>
+      <div style="height:240px"><canvas id="chartHistCDN"></canvas></div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">CloudFront — April 2026</span></div>
+      <div class="card-body">
+        <table class="data-table">
+          <thead><tr><th>Region</th><th>GB Delivered</th><th>Rate</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td>ME (Bahrain)</td><td>3,079,836 GB</td><td>$0.007</td><td class="num">$21,558</td></tr>
+            <tr><td>EU (Ireland)</td><td>727,230 GB</td><td>$0.004</td><td class="num">$2,909</td></tr>
+            <tr class="total-row"><td><strong>Total</strong></td><td><strong>3,807,066 GB</strong></td><td>—</td><td class="num"><strong>$24,467</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">CloudFront — May 2026</span>
+        <span class="badge badge-warn">AWS ME incident</span>
+      </div>
+      <div class="card-body">
+        <table class="data-table">
+          <thead><tr><th>Region</th><th>GB Delivered</th><th>Rate</th><th>Cost</th></tr></thead>
+          <tbody>
+            <tr><td>ME (Bahrain)</td><td>2,054,784 GB</td><td>$0.007</td><td class="num">$14,383</td></tr>
+            <tr><td>EU (Ireland)</td><td>2,513,647 GB</td><td>$0.004</td><td class="num">$10,055</td></tr>
+            <tr class="total-row"><td><strong>Total</strong></td><td><strong>4,568,431 GB</strong></td><td>—</td><td class="num"><strong>$24,438</strong></td></tr>
+          </tbody>
+        </table>
+        <div class="alert alert-warn" style="margin-top:8px">
+          <span>⚠</span>
+          <span data-i18n="mayIncident">EU delivery spiked to 2.51 PB — MEA traffic rerouted through EU CloudFront during the AWS ME region incident.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-hdr"><span class="card-title">May 12, 2026 — Al Hilal vs Al Nassr (Confirmed)</span></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <div class="section-label">Daily Costs (Both Matches)</div>
+          <table class="data-table">
+            <thead><tr><th data-i18n="service">Service</th><th>Daily Total</th><th>Al Hilal (95%)</th></tr></thead>
+            <tbody>
+              <tr><td>CloudFront</td><td>$4,593.43</td><td class="num">$4,363.76</td></tr>
+              <tr><td>MediaLive</td><td>$2,095.48</td><td class="num">$1,990.71</td></tr>
+              <tr><td>MediaPackage</td><td>$483.18</td><td class="num">$459.02</td></tr>
+              <tr><td>MediaConnect</td><td>$126.38</td><td class="num">$120.06</td></tr>
+              <tr class="total-row"><td><strong>Total</strong></td><td><strong>$7,298.48</strong></td><td class="num"><strong>$6,933.55</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="section-label">Match Viewer Stats</div>
+          <table class="data-table">
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Total unique viewers</td><td class="num">378,210</td></tr>
+              <tr><td>Peak concurrent</td><td class="num">308,120</td></tr>
+              <tr><td>Avg watch time</td><td class="num">114.76 min</td></tr>
+              <tr><td>Total viewing hours</td><td class="num">723,896 hrs</td></tr>
+              <tr><td>GB per viewer</td><td class="num">2.46 GB</td></tr>
+              <tr><td>Implied avg bitrate</td><td class="num">~3 Mbps</td></tr>
+              <tr><td>GB delivered</td><td class="num">930,204 GB</td></tr>
+              <tr><td>Effective CF rate</td><td class="num">$0.00469/GB</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin-top:10px">
+        <span>ℹ</span>
+        <span>Effective CDN rate of $0.00469/GB reflects ~77% EU / 23% ME routing due to the AWS ME incident, vs the normal contracted rates of $0.007 ME / $0.004 EU.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-hdr"><span class="card-title">MediaLive — Per-Match Cost Analysis</span></div>
+    <div class="card-body">
+      <table class="data-table">
+        <thead><tr><th>Month</th><th>Net Total</th><th>Matches</th><th>Per Match</th><th>Always-On Baseline</th></tr></thead>
+        <tbody>
+          <tr><td>April 2026</td><td class="num">$72,585</td><td>95</td><td class="num">$764</td><td>$569.86/day</td></tr>
+          <tr><td>May 2026</td><td class="num">$58,402</td><td>83</td><td class="num">$703</td><td>$569.86/day</td></tr>
+          <tr class="total-row"><td><strong>Average</strong></td><td>—</td><td>—</td><td class="num"><strong>$733/match</strong></td><td>~$17,096/month</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info" style="margin-top:8px">
+        <span>ℹ</span>
+        <span>Channels run 24/7. Always-on monthly baseline: ~$17,096. Per-match cost = monthly total ÷ match count. This is the correct model — not rate × match hours.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hdr"><span class="card-title">MediaConnect — April &amp; May 2026</span></div>
+    <div class="card-body">
+      <table class="data-table">
+        <thead><tr><th>Month</th><th>RunningFlow hrs</th><th>LargeInst hrs</th><th>Regional GB</th><th>Net</th></tr></thead>
+        <tbody>
+          <tr><td>April 2026</td><td>21,435 hrs</td><td>75.7 hrs</td><td>201,521 GB</td><td class="num">$5,862</td></tr>
+          <tr><td>May 2026</td><td>12,668 hrs</td><td>413.0 hrs</td><td>146,282 GB</td><td class="num">$4,186</td></tr>
+        </tbody>
+      </table>
+      <div class="alert alert-info" style="margin-top:8px">
+        <span>ℹ</span>
+        <span data-i18n="mcHistNote">Baseline ~19 flows 24/7 = $3,257/month (WA). Match-day variable = $112/day (WA). May had more LargeInstance hours (413 vs 76) consistent with UHD Finals.</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /historical -->
+
+</div><!-- /page -->
+
+<script>
+// ═══════════════════════════
+//  CONSTANTS
+// ═══════════════════════════
+const R = {
+  cf: { me: 0.007, eu: 0.004 },
+  mc: { stdHr: 0.1934, liHr: 1.368, fixedMonthly: 3257, matchDay: 112 },
+  ml: {
+    ch10Hr: 43.686, ch11Hr: 7.188,      // 4K: both channels
+    fourKHr: 50.874,                     // ch10 + ch11 combined
+    defaultPerMatch: 733,
+    monthlyBaseline: 17096
+  },
+  mp: { ingestRate: 0.036, origRate: 0.048, defaultIngest: 1230, defaultOrig: 820 }
+};
+
+// Demo: Al Hilal vs Al Nassr — May 12, 2026 (confirmed actual values)
+// CF: $4,363.76 for Al Hilal (95% of $4,593.43 daily) from ~77% EU / 23% ME routing
+// ML: $1,990.71 (actual specific-match cost — override default $733 for this demo)
+// MP: $459.02 → ~3,278 GB ingest + 2,186 GB orig
+const DEMO = {
+  eventName: 'Al Hilal vs Al Nassr',
+  matchDate: '2026-05-12',
+  streamHours: 6,
+  matchType: 'standard',
+  concurrentMatches: 1,
+  mlCostPerMatch: 1991,     // actual confirmed (95% of $2,095.48 daily)
+  mpMode: 'historical',     // MODE 1: daily cost × viewer share (MD section 6.4)
+  mpDailyCost: 483.18,      // confirmed May 12 daily total
+  mpViewerShare: 95,        // Al Hilal had 95% of viewers → $459.02
+  ingestGB: 1230,           // fallback for forecast mode
+  originationGB: 820,
+  meGB: 214315,             // 23% of 930,204 GB → $1,500 ME
+  euGB: 715889,             // 77% of 930,204 GB → $2,864 EU → total $4,364 ✓
+  viewers: 378210,
+  avgWatchMin: 114.76
+};
+
+// Chart color palette
+const CLR = {
+  ml: '#3b82f6', cf: '#10b981', mp: '#f59e0b', mc: '#a78bfa',
+  me: '#ef4444', eu: '#3b82f6',
+  mlBase: '#3b82f6', ch10: '#f59e0b', ch11: '#ef4444'
+};
+
+// ═══════════════════════════
+//  STATE
+// ═══════════════════════════
+let state = { lang: 'en', theme: 'dark' };
+const charts = {};
+
+// ═══════════════════════════
+//  TRANSLATIONS
+// ═══════════════════════════
+const T = {
+  en: {
+    headerTitle: 'Thmanyah Streaming Cost Model',
+    lightMode: 'Light', darkMode: 'Dark', print: 'Print',
+    tabEstimator: 'Match Estimator', tabMonthly: 'Monthly Forecast', tabHistorical: 'Historical Data',
+    matchInfo: 'Match Information', eventName: 'Event Name', matchDate: 'Date',
+    duration: 'Duration (hrs)', durationHint: 'Includes ~1hr pre-match',
+    concurrent: 'Concurrent Matches', matchType: 'Match Type',
+    typeStd: 'Standard (FTA + SPL)',
+    fourKAlert: '4K adds CH10_SPL + CH11_SPL ($50.874/hr combined) to MediaLive, and requires LargeInstance flows in MediaConnect.',
+    liFlows: 'LargeInstance Flows', liHint: '1–2 LargeInstance flows required for UHD feed. Pending confirmation.',
+    mlPerMatch: 'Cost Per Match',
+    mlHint: 'Channels run 24/7. Derived from monthly total ÷ match count. Apr: $764 · May: $703 · Avg: $733.',
+    ml4kInfo: '4K adds CH10_SPL + CH11_SPL = $50.874/hr × stream hours on top of the standard per-match base.',
+    mcNote: 'Variable component: $112/match day. Fixed baseline ($3,257/month) is excluded — shown in Monthly Forecast only.',
+    inputMode: 'Input Mode', modeAuto: 'Auto (defaults)', modeManual: 'Manual', modeHistorical: 'Historical',
+    mpDailyCostLbl: 'Daily MP Cost ($)', mpViewerShareLbl: 'Viewer Share (%)',
+    mpHistHint: 'Match cost = daily cost × viewer share %. Use when Cost Explorer daily figure is known. Apply % directly to daily total — do not divide by match count first.',
+    ingestGB: 'Ingest GB', ingestHint: 'Default: 1,230 GB/match',
+    origGB: 'Origination GB', origHint: 'Default: 820 GB/match',
+    mpAutoHint: 'Auto: using historical per-match defaults (1,230 / 820 GB). Edit to override.',
+    meGB: 'ME (Bahrain) GB', meHint: 'Primary viewer delivery (MEA)',
+    euGB: 'EU (Ireland) GB', euHint: 'Origin egress + backup',
+    gbEstHelper: '▸ Estimate GB from viewer data',
+    estViewers: 'Viewers', estWatch: 'Avg Watch (min)', estBitrate: 'Avg Bitrate (Mbps)', estMePct: 'ME % of traffic',
+    applyGB: 'Apply → fill GB fields',
+    viewerMetrics: 'Viewer Metrics', optional: 'optional',
+    viewers: 'Unique Viewers', avgWatch: 'Avg Watch (min)',
+    viewerHint: 'Enables per-viewer and per-viewing-hour cost metrics in results.',
+    calculate: 'Calculate Cost', demo: '⚽ Demo: Al Hilal vs Al Nassr', clear: '✕ Clear',
+    emptyMsg: 'Fill in the match details on the left and click Calculate Cost to see a full breakdown with charts.',
+    breakdown: 'Cost Breakdown', distribution: 'Distribution',
+    cdnDetail: 'CloudFront CDN Breakdown', mlDetail: 'MediaLive Detail', mpDetail: 'MediaPackage Detail',
+    monthlyTitle: 'Monthly Forecast Inputs', periodLabel: 'Month / Period', matchDays: 'Match Days',
+    matchMix: 'Match Mix', stdCount: 'Standard Matches', k4Count: '4K Matches', avgHours: 'Avg Stream Hours',
+    avgGBPerMatch: 'Avg GB per Match', calcMonthly: 'Forecast Monthly Cost',
+    monthlyEmptyMsg: 'Enter monthly parameters and click Forecast to see projected costs.',
+    histTitle: 'Historical Data — April & May 2026',
+    histSub: 'All figures are post-EDP-discount net costs (20% discount applied). Source: AWS Cost Explorer.',
+    service: 'Service', netCost: 'Net Cost',
+    mayIncident: 'EU delivery spiked to 2.51 PB — MEA traffic rerouted through EU CloudFront during the AWS ME region incident.',
+    mcHistNote: 'Baseline ~19 flows 24/7 = $3,257/month (WA). Match-day variable = $112/day (WA). May had more LargeInstance hours (413 vs 76) consistent with UHD Finals.',
+    svcComp: 'Service Cost Comparison', cdnComp: 'CDN Regional Volume',
+  },
+  ar: {
+    headerTitle: 'نموذج تكلفة البث — ثمانية',
+    lightMode: 'فاتح', darkMode: 'مظلم', print: 'طباعة',
+    tabEstimator: 'حاسبة المباراة', tabMonthly: 'التنبؤ الشهري', tabHistorical: 'البيانات التاريخية',
+    matchInfo: 'معلومات المباراة', eventName: 'اسم الحدث', matchDate: 'التاريخ',
+    duration: 'المدة (ساعات)', durationHint: 'يشمل ساعة قبل المباراة',
+    concurrent: 'مباريات متزامنة', matchType: 'نوع المباراة',
+    typeStd: 'عادي (FTA + SPL)',
+    fourKAlert: 'يضيف 4K كلاً من CH10_SPL + CH11_SPL (50.874$/ساعة) لـ MediaLive، ويتطلب تدفقات LargeInstance في MediaConnect.',
+    liFlows: 'تدفقات LargeInstance', liHint: '1-2 تدفقات مطلوبة للبث UHD. قيد التأكيد.',
+    mlPerMatch: 'تكلفة المباراة الواحدة',
+    mlHint: 'القنوات تعمل 24/7. مشتقة من الإجمالي الشهري ÷ عدد المباريات. أبريل: 764$ · مايو: 703$ · المتوسط: 733$.',
+    ml4kInfo: 'يضيف 4K: CH10_SPL + CH11_SPL = 50.874$/ساعة × ساعات البث فوق أساس المباراة العادية.',
+    mcNote: 'مكوّن متغير: 112$/يوم مباراة. الأساس الثابت (3,257$/شهر) مستثنى — يظهر في التنبؤ الشهري فقط.',
+    inputMode: 'وضع الإدخال', modeAuto: 'تلقائي (افتراضي)', modeManual: 'يدوي', modeHistorical: 'تاريخي',
+    mpDailyCostLbl: 'تكلفة MP اليومية ($)', mpViewerShareLbl: 'نسبة المشاهدين (%)',
+    mpHistHint: 'تكلفة المباراة = التكلفة اليومية × نسبة المشاهدين%. استخدم عند توفر الرقم اليومي من Cost Explorer. طبّق النسبة مباشرة على الإجمالي اليومي — لا تقسم على عدد المباريات أولاً.',
+    ingestGB: 'جيجابايت الاستيعاب', ingestHint: 'الافتراضي: 1,230 جيجابايت/مباراة',
+    origGB: 'جيجابايت الإرسال', origHint: 'الافتراضي: 820 جيجابايت/مباراة',
+    mpAutoHint: 'تلقائي: القيم الافتراضية التاريخية (1,230 / 820 جيجابايت). قابل للتعديل.',
+    meGB: 'جيجابايت الشرق الأوسط', meHint: 'التوصيل الرئيسي للمشاهدين',
+    euGB: 'جيجابايت أوروبا', euHint: 'مصدر البث + احتياطي',
+    gbEstHelper: '▸ تقدير الجيجابايت من بيانات المشاهدين',
+    estViewers: 'المشاهدون', estWatch: 'متوسط المشاهدة (دقيقة)', estBitrate: 'معدل البت (ميغابت/ث)', estMePct: 'نسبة الشرق الأوسط',
+    applyGB: 'تطبيق ← ملء الحقول',
+    viewerMetrics: 'بيانات المشاهدين', optional: 'اختياري',
+    viewers: 'مشاهدون فريدون', avgWatch: 'متوسط المشاهدة (دقيقة)',
+    viewerHint: 'يتيح حساب تكلفة كل مشاهد وكل ساعة مشاهدة في النتائج.',
+    calculate: 'احسب التكلفة', demo: '⚽ مثال: الهلال vs النصر', clear: '✕ مسح',
+    emptyMsg: 'أدخل بيانات المباراة على اليسار وانقر احسب التكلفة.',
+    breakdown: 'تفاصيل التكلفة', distribution: 'التوزيع',
+    cdnDetail: 'تفاصيل CloudFront CDN', mlDetail: 'تفاصيل MediaLive', mpDetail: 'تفاصيل MediaPackage',
+    monthlyTitle: 'مدخلات التنبؤ الشهري', periodLabel: 'الشهر / الفترة', matchDays: 'أيام المباريات',
+    matchMix: 'مزيج المباريات', stdCount: 'مباريات عادية', k4Count: 'مباريات 4K', avgHours: 'متوسط ساعات البث',
+    avgGBPerMatch: 'متوسط الجيجابايت لكل مباراة', calcMonthly: 'احسب التكلفة الشهرية',
+    monthlyEmptyMsg: 'أدخل المعطيات الشهرية وانقر احسب.',
+    histTitle: 'البيانات التاريخية — أبريل ومايو 2026',
+    histSub: 'جميع الأرقام صافي التكاليف بعد خصم EDP (20%). المصدر: AWS Cost Explorer.',
+    service: 'الخدمة', netCost: 'التكلفة الصافية',
+    mayIncident: 'ارتفع توصيل أوروبا بسبب حادثة AWS ME — أُعيد توجيه مشاهدي المنطقة عبر CloudFront الأوروبي.',
+    mcHistNote: 'الأساس ~19 تدفقاً 24/7 = 3,257$/شهر (WA). المتغير = 112$/يوم (WA). مايو: ساعات LargeInstance أكثر (413 مقابل 76).',
+    svcComp: 'مقارنة تكلفة الخدمات', cdnComp: 'حجم CDN الإقليمي',
+  }
+};
+
+// ═══════════════════════════
+//  UTILS
+// ═══════════════════════════
+function fmt(n, d = 2) { return '$' + n.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function fmtN(n) { return Math.round(n).toLocaleString('en-US'); }
+function fmtGB(n) {
+  if (n >= 1048576) return (n / 1048576).toFixed(2) + ' PB';
+  if (n >= 1024) return (n / 1024).toFixed(1) + ' TB';
+  return fmtN(n) + ' GB';
+}
+function pct(a, b) { return b > 0 ? (a / b * 100).toFixed(1) + '%' : '0%'; }
+function t(k) { return T[state.lang][k] || T.en[k] || k; }
+function tc() { return state.theme === 'dark' ? '#94a3b8' : '#64748b'; }
+function gc() { return state.theme === 'dark' ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)'; }
+
+function mkChart(id, cfg) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  if (charts[id]) { try { charts[id].destroy(); } catch (e) {} delete charts[id]; }
+  cfg.options = cfg.options || {};
+  cfg.options.plugins = cfg.options.plugins || {};
+  if (!cfg.options.plugins.legend) cfg.options.plugins.legend = {};
+  if (!cfg.options.plugins.legend.labels) cfg.options.plugins.legend.labels = {};
+  cfg.options.plugins.legend.labels.color = tc();
+  cfg.options.plugins.legend.labels.font = { size: 10, family: 'Inter, system-ui' };
+  if (cfg.options.scales) {
+    Object.values(cfg.options.scales).forEach(s => {
+      if (s.ticks) { s.ticks.color = tc(); s.ticks.font = { size: 9, family: 'Inter, system-ui' }; }
+      if (s.grid) s.grid.color = gc();
+    });
+  }
+  charts[id] = new Chart(canvas, cfg);
+}
+
+// ═══════════════════════════
+//  THEME / LANG
+// ═══════════════════════════
+function toggleTheme() {
+  state.theme = state.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', state.theme);
+  document.getElementById('themeBtn').textContent = state.theme === 'dark' ? t('lightMode') : t('darkMode');
+  // Redraw all charts
+  Object.keys(charts).forEach(id => {
+    const c = charts[id];
+    if (c) { const cfg = c.config; try { c.destroy(); } catch(e){} mkChart(id, cfg); }
+  });
+  if (document.getElementById('tab-historical').classList.contains('active')) {
+    setTimeout(renderHistoricalCharts, 50);
+  }
+}
+
+function toggleLang() {
+  state.lang = state.lang === 'en' ? 'ar' : 'en';
+  document.documentElement.setAttribute('lang', state.lang);
+  document.documentElement.setAttribute('dir', state.lang === 'ar' ? 'rtl' : 'ltr');
+  document.getElementById('langBtn').textContent = state.lang === 'en' ? 'العربية' : 'English';
+  translateAll();
+}
+
+function translateAll() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    const val = T[state.lang][k];
+    if (!val) return;
+    if (el.children.length === 0) el.textContent = val;
+  });
+  document.getElementById('themeBtn').textContent = state.theme === 'dark' ? t('lightMode') : t('darkMode');
+  document.getElementById('langBtn').textContent = state.lang === 'en' ? 'العربية' : 'English';
+}
+
+// ═══════════════════════════
+//  TAB SWITCHING
+// ═══════════════════════════
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab === 'historical') setTimeout(renderHistoricalCharts, 50);
+  });
+});
+
+// ═══════════════════════════
+//  FORM EVENTS
+// ═══════════════════════════
+function onMatchTypeChange() {
+  const is4k = document.querySelector('input[name="matchType"]:checked').value === '4k';
+  document.getElementById('sec4k').classList.toggle('open', is4k);
+  document.getElementById('ml4kInfo').style.display = is4k ? 'flex' : 'none';
+}
+
+function onMpModeChange() {
+  const mode = document.querySelector('input[name="mpMode"]:checked').value;
+  const isHistorical = mode === 'historical';
+  const isAuto = mode === 'auto';
+  document.getElementById('mpHistFields').classList.toggle('open', isHistorical);
+  document.getElementById('mpGbFields').style.display = isHistorical ? 'none' : '';
+  document.getElementById('mpAutoHint').style.display = isAuto ? 'block' : 'none';
+  if (isAuto) {
+    document.getElementById('ingestGB').value = R.mp.defaultIngest;
+    document.getElementById('originationGB').value = R.mp.defaultOrig;
+  }
+}
+
+function estimateGB() {
+  const viewers = parseFloat(document.getElementById('estViewers').value) || 0;
+  const watchMin = parseFloat(document.getElementById('estWatch').value) || 0;
+  const bitrate = parseFloat(document.getElementById('estBitrate').value) || 3;
+  const mePct = (parseFloat(document.getElementById('estMePct').value) || 23) / 100;
+  if (!viewers || !watchMin) { alert('Enter viewer count and watch time first.'); return; }
+  const gbPerViewer = bitrate * (watchMin / 60) * 3600 / 8192;
+  const totalGB = viewers * gbPerViewer;
+  document.getElementById('meGB').value = Math.round(totalGB * mePct);
+  document.getElementById('euGB').value = Math.round(totalGB * (1 - mePct));
+}
+
+// ═══════════════════════════
+//  DEMO / CLEAR
+// ═══════════════════════════
+function loadDemo() {
+  const d = DEMO;
+  document.getElementById('eventName').value = d.eventName;
+  document.getElementById('matchDate').value = d.matchDate;
+  document.getElementById('streamHours').value = d.streamHours;
+  document.getElementById('concurrentMatches').value = d.concurrentMatches;
+  document.querySelector('input[value="standard"]').checked = true;
+  document.getElementById('sec4k').classList.remove('open');
+  document.getElementById('ml4kInfo').style.display = 'none';
+  document.getElementById('mlCostPerMatch').value = d.mlCostPerMatch;
+  document.querySelector(`input[name="mpMode"][value="${d.mpMode}"]`).checked = true;
+  document.getElementById('mpDailyCost').value = d.mpDailyCost;
+  document.getElementById('mpViewerShare').value = d.mpViewerShare;
+  document.getElementById('ingestGB').value = d.ingestGB;
+  document.getElementById('originationGB').value = d.originationGB;
+  onMpModeChange();
+  document.getElementById('meGB').value = d.meGB;
+  document.getElementById('euGB').value = d.euGB;
+  document.getElementById('viewers').value = d.viewers;
+  document.getElementById('avgWatch').value = d.avgWatchMin;
+  calculateMatch();
+}
+
+function clearAll() {
+  document.getElementById('eventName').value = '';
+  document.getElementById('matchDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('streamHours').value = '6';
+  document.getElementById('concurrentMatches').value = '1';
+  document.querySelector('input[value="standard"]').checked = true;
+  document.getElementById('sec4k').classList.remove('open');
+  document.getElementById('ml4kInfo').style.display = 'none';
+  document.getElementById('mlCostPerMatch').value = '733';
+  document.querySelector('input[name="mpMode"][value="auto"]').checked = true;
+  document.getElementById('mpDailyCost').value = '';
+  document.getElementById('mpViewerShare').value = '100';
+  onMpModeChange();
+  document.getElementById('meGB').value = '';
+  document.getElementById('euGB').value = '';
+  document.getElementById('viewers').value = '';
+  document.getElementById('avgWatch').value = '';
+  document.getElementById('resultsArea').style.display = 'none';
+  document.getElementById('emptyState').style.display = '';
+}
+
+// ═══════════════════════════
+//  CORE COMPUTE
+// ═══════════════════════════
+function compute(f) {
+  const is4k = f.matchType === '4k';
+  const n = f.n || 1;
+  const h = f.h || 6;
+
+  // MediaConnect: variable match-day + 4K LargeInstance
+  const mcVar = R.mc.matchDay;
+  const mcLI = is4k ? R.mc.liHr * h * (f.liFlows || 1) : 0;
+  const mcTotal = mcVar + mcLI;
+
+  // MediaLive: flat per-match × concurrent + 4K incremental (CH10 + CH11)
+  const mlPM = f.mlCostPerMatch || R.ml.defaultPerMatch;
+  const mlBase = mlPM * n;
+  const ml4k = is4k ? R.ml.fourKHr * h : 0;
+  const mlTotal = mlBase + ml4k;
+
+  // MediaPackage — MODE 1 (historical): daily × share%. MODE 2 (forecast): GB-based
+  let inGB, orGB, mpIngest, mpOrig, mpTotal;
+  const mpHistDailyCost = f.mpDailyCost || 0;
+  const mpHistShare = f.mpViewerShare || 100;
+  if (f.mpMode === 'historical') {
+    mpTotal = mpHistDailyCost * (mpHistShare / 100);
+    // Approximate 60/40 ingest/orig split for display breakdown
+    mpIngest = mpTotal * 0.6;
+    mpOrig   = mpTotal * 0.4;
+    inGB = mpIngest / R.mp.ingestRate;
+    orGB = mpOrig  / R.mp.origRate;
+  } else {
+    inGB = f.ingestGB || 0;
+    orGB = f.origGB || 0;
+    mpIngest = inGB * R.mp.ingestRate;
+    mpOrig   = orGB * R.mp.origRate;
+    mpTotal  = mpIngest + mpOrig;
+  }
+
+  // CloudFront
+  const cfMe = f.meGB * R.cf.me;
+  const cfEu = f.euGB * R.cf.eu;
+  const cfTotal = cfMe + cfEu;
+  const cfTotalGB = f.meGB + f.euGB;
+  const cfBlended = cfTotalGB > 0 ? cfTotal / cfTotalGB : 0;
+
+  const total = mcTotal + mlTotal + mpTotal + cfTotal;
+
+  const tvh = f.viewers > 0 && f.avgWatchMin > 0 ? f.viewers * f.avgWatchMin / 60 : 0;
+
+  return {
+    mc: { var: mcVar, li: mcLI, total: mcTotal },
+    ml: { base: mlBase, perMatch: mlPM, k4: ml4k, total: mlTotal, is4k, n, h },
+    mp: { ingest: mpIngest, orig: mpOrig, inGB, orGB, total: mpTotal, histDailyCost: mpHistDailyCost, histShare: mpHistShare, isHistorical: f.mpMode === 'historical' },
+    cf: { me: cfMe, eu: cfEu, meGB: f.meGB, euGB: f.euGB, total: cfTotal, blended: cfBlended, totalGB: cfTotalGB },
+    total,
+    viewers: f.viewers,
+    tvh,
+    pv: f.viewers > 0 ? { cdn: cfTotal / f.viewers, all: total / f.viewers } : null,
+    ph: tvh > 0 ? { cdn: cfTotal / tvh, all: total / tvh } : null,
+    gbPV: f.viewers > 0 ? cfTotalGB / f.viewers : 0,
+    eventName: f.eventName, matchDate: f.matchDate, is4k, h, n
+  };
+}
+
+function getForm() {
+  return {
+    eventName: document.getElementById('eventName').value || 'Match',
+    matchDate: document.getElementById('matchDate').value,
+    matchType: document.querySelector('input[name="matchType"]:checked').value,
+    n: parseInt(document.getElementById('concurrentMatches').value) || 1,
+    h: parseFloat(document.getElementById('streamHours').value) || 6,
+    liFlows: parseInt(document.querySelector('input[name="liFlows"]:checked').value) || 1,
+    mlCostPerMatch: parseFloat(document.getElementById('mlCostPerMatch').value) || 733,
+    mpMode: document.querySelector('input[name="mpMode"]:checked').value,
+    mpDailyCost: parseFloat(document.getElementById('mpDailyCost').value) || 0,
+    mpViewerShare: parseFloat(document.getElementById('mpViewerShare').value) || 100,
+    ingestGB: parseFloat(document.getElementById('ingestGB').value) || 0,
+    origGB: parseFloat(document.getElementById('originationGB').value) || 0,
+    meGB: parseFloat(document.getElementById('meGB').value) || 0,
+    euGB: parseFloat(document.getElementById('euGB').value) || 0,
+    viewers: parseInt(document.getElementById('viewers').value) || 0,
+    avgWatchMin: parseFloat(document.getElementById('avgWatch').value) || 0,
+  };
+}
+
+// ═══════════════════════════
+//  CALCULATE MATCH
+// ═══════════════════════════
+function calculateMatch() {
+  const res = compute(getForm());
+  window._lastRes = res;
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsArea').style.display = 'block';
+  renderResults(res);
+  if (window.innerWidth < 900) {
+    document.getElementById('resultsArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// ═══════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════
+function renderResults(res) {
+  // Hero
+  document.getElementById('heroCard').innerHTML = `
+    <div class="total-label">Total Match Cost</div>
+    <div class="total-amount">${fmt(res.total)}</div>
+    <div class="total-name">${res.eventName}${res.matchDate ? ' · ' + res.matchDate : ''}${res.is4k ? ' · <span class="badge badge-4k">4K</span>' : ''}</div>
+    <div class="total-meta">
+      <div class="total-stat"><div class="total-stat-val">${res.h}h</div><div class="total-stat-lbl">Duration</div></div>
+      <div class="total-stat"><div class="total-stat-val">${res.n}×</div><div class="total-stat-lbl">Concurrent</div></div>
+      <div class="total-stat"><div class="total-stat-val">${fmtGB(res.cf.totalGB)}</div><div class="total-stat-lbl">CDN Delivered</div></div>
+      ${res.viewers ? `<div class="total-stat"><div class="total-stat-val">${fmtN(res.viewers)}</div><div class="total-stat-lbl">Viewers</div></div>` : ''}
+    </div>`;
+
+  // KPI row
+  if (res.pv) {
+    document.getElementById('kpiRow').innerHTML = `
+      <div class="kpi-grid" style="margin-bottom:10px">
+        <div class="kpi"><div class="kpi-val">${fmt(res.pv.cdn, 4)}</div><div class="kpi-lbl">CDN / Viewer</div></div>
+        <div class="kpi"><div class="kpi-val">${fmt(res.pv.all, 4)}</div><div class="kpi-lbl">Total / Viewer</div></div>
+        ${res.ph ? `<div class="kpi"><div class="kpi-val">${fmt(res.ph.cdn, 4)}</div><div class="kpi-lbl">CDN / View-hr</div></div>` : '<div class="kpi"><div class="kpi-val">—</div><div class="kpi-lbl">CDN / View-hr</div></div>'}
+        <div class="kpi"><div class="kpi-val">${res.gbPV.toFixed(2)} GB</div><div class="kpi-lbl">GB / Viewer</div></div>
+      </div>`;
+  } else {
+    document.getElementById('kpiRow').innerHTML = '';
+  }
+
+  // Service breakdown
+  const svcs = [
+    { lbl: 'MediaLive', val: res.ml.total, color: CLR.ml },
+    { lbl: 'CloudFront CDN', val: res.cf.total, color: CLR.cf },
+    { lbl: 'MediaPackage', val: res.mp.total, color: CLR.mp },
+    { lbl: 'MediaConnect', val: res.mc.total, color: CLR.mc },
+  ];
+  document.getElementById('breakdownBody').innerHTML = svcs.map(s => `
+    <div class="bk-row">
+      <div class="bk-swatch" style="background:${s.color}"></div>
+      <div class="bk-name">${s.lbl}</div>
+      <div class="bk-track"><div class="bk-fill" style="width:${pct(s.val, res.total)};background:${s.color}"></div></div>
+      <div class="bk-amount">${fmt(s.val)}</div>
+      <div class="bk-pct">${pct(s.val, res.total)}</div>
+    </div>`).join('');
+
+  // CDN regions
+  document.getElementById('cdnRegions').innerHTML = `
+    <div class="cdn-region">
+      <div class="cdn-region-hdr">
+        <div class="cdn-dot" style="background:${CLR.me}"></div>
+        <div class="cdn-region-name">ME (Bahrain)</div>
+        <div class="cdn-region-rate">$0.007/GB</div>
+      </div>
+      <div class="cdn-gb">${fmtGB(res.cf.meGB)}</div>
+      <div class="cdn-cost">${fmt(res.cf.me)}</div>
+      <div class="cdn-sub">${pct(res.cf.me, res.cf.total)} of CDN cost</div>
+    </div>
+    <div class="cdn-region">
+      <div class="cdn-region-hdr">
+        <div class="cdn-dot" style="background:${CLR.eu}"></div>
+        <div class="cdn-region-name">EU (Ireland)</div>
+        <div class="cdn-region-rate">$0.004/GB</div>
+      </div>
+      <div class="cdn-gb">${fmtGB(res.cf.euGB)}</div>
+      <div class="cdn-cost">${fmt(res.cf.eu)}</div>
+      <div class="cdn-sub">${pct(res.cf.eu, res.cf.total)} · 43% cheaper/GB than ME</div>
+    </div>`;
+
+  // ML detail
+  const mlRows = [{ lbl: `Base (${res.n}× match × $${res.ml.perMatch})`, val: res.ml.base, color: CLR.mlBase }];
+  if (res.is4k) {
+    mlRows.push({ lbl: `CH10_SPL ($${R.ml.ch10Hr}/hr × ${res.h}h)`, val: R.ml.ch10Hr * res.h, color: CLR.ch10 });
+    mlRows.push({ lbl: `CH11_SPL ($${R.ml.ch11Hr}/hr × ${res.h}h)`, val: R.ml.ch11Hr * res.h, color: CLR.ch11 });
+  }
+  document.getElementById('mlDetail').innerHTML = mlRows.map(r => `
+    <div class="bk-row">
+      <div class="bk-swatch" style="background:${r.color}"></div>
+      <div class="bk-name">${r.lbl}</div>
+      <div class="bk-track"><div class="bk-fill" style="width:${pct(r.val, res.ml.total)};background:${r.color}"></div></div>
+      <div class="bk-amount">${fmt(r.val)}</div>
+      <div class="bk-pct">${pct(r.val, res.ml.total)}</div>
+    </div>`).join('');
+
+  // MP detail — two modes
+  document.getElementById('mpDetail').innerHTML = res.mp.isHistorical
+    ? `<div class="alert alert-ok" style="margin-bottom:8px">
+        <span>✓</span>
+        <span>Historical mode: $${res.mp.histDailyCost.toFixed(2)} daily × ${res.mp.histShare}% viewer share = <strong>${fmt(res.mp.total)}</strong></span>
+       </div>
+       <div class="bk-row">
+        <div class="bk-swatch" style="background:${CLR.mp}"></div>
+        <div class="bk-name">Ingest ~60% (${fmtGB(res.mp.inGB)})</div>
+        <div class="bk-track"><div class="bk-fill" style="width:${pct(res.mp.ingest, res.mp.total)};background:${CLR.mp}"></div></div>
+        <div class="bk-amount">${fmt(res.mp.ingest)}</div>
+        <div class="bk-pct">${pct(res.mp.ingest, res.mp.total)}</div>
+       </div>
+       <div class="bk-row">
+        <div class="bk-swatch" style="background:#f97316"></div>
+        <div class="bk-name">Origination ~40% (${fmtGB(res.mp.orGB)})</div>
+        <div class="bk-track"><div class="bk-fill" style="width:${pct(res.mp.orig, res.mp.total)};background:#f97316"></div></div>
+        <div class="bk-amount">${fmt(res.mp.orig)}</div>
+        <div class="bk-pct">${pct(res.mp.orig, res.mp.total)}</div>
+       </div>`
+    : `<div class="bk-row">
+      <div class="bk-swatch" style="background:${CLR.mp}"></div>
+      <div class="bk-name">Ingest (${fmtGB(res.mp.inGB)} × $0.036)</div>
+      <div class="bk-track"><div class="bk-fill" style="width:${pct(res.mp.ingest, res.mp.total)};background:${CLR.mp}"></div></div>
+      <div class="bk-amount">${fmt(res.mp.ingest)}</div>
+      <div class="bk-pct">${pct(res.mp.ingest, res.mp.total)}</div>
+    </div>
+    <div class="bk-row">
+      <div class="bk-swatch" style="background:#f97316"></div>
+      <div class="bk-name">Origination (${fmtGB(res.mp.orGB)} × $0.048)</div>
+      <div class="bk-track"><div class="bk-fill" style="width:${pct(res.mp.orig, res.mp.total)};background:#f97316"></div></div>
+      <div class="bk-amount">${fmt(res.mp.orig)}</div>
+      <div class="bk-pct">${pct(res.mp.orig, res.mp.total)}</div>
+    </div>`;
+
+  setTimeout(() => renderMatchCharts(res), 50);
+}
+
+// ═══════════════════════════
+//  MATCH CHARTS
+// ═══════════════════════════
+function renderMatchCharts(res) {
+  const borderClr = state.theme === 'dark' ? '#1e293b' : '#ffffff';
+
+  // Donut
+  const svcs = [
+    { lbl: 'MediaLive', val: res.ml.total, color: CLR.ml },
+    { lbl: 'CloudFront', val: res.cf.total, color: CLR.cf },
+    { lbl: 'MediaPackage', val: res.mp.total, color: CLR.mp },
+    { lbl: 'MediaConnect', val: res.mc.total, color: CLR.mc },
+  ];
+  mkChart('chartDonut', {
+    type: 'doughnut',
+    data: {
+      labels: svcs.map(s => s.lbl),
+      datasets: [{
+        data: svcs.map(s => parseFloat(s.val.toFixed(2))),
+        backgroundColor: svcs.map(s => s.color),
+        borderWidth: 2,
+        borderColor: borderClr,
+        hoverOffset: 5
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: tc(), font: { size: 9 }, boxWidth: 10, padding: 7 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmt(ctx.raw)} (${pct(ctx.raw, res.total)})` } }
+      }
+    }
+  });
+
+  // CDN bar
+  mkChart('chartCDN', {
+    type: 'bar',
+    data: {
+      labels: ['ME (Bahrain)', 'EU (Ireland)'],
+      datasets: [
+        { label: 'Cost', data: [+res.cf.me.toFixed(2), +res.cf.eu.toFixed(2)], backgroundColor: [CLR.me + 'BB', CLR.eu + 'BB'], yAxisID: 'yCost' },
+        { label: 'Volume (GB÷1k)', data: [Math.round(res.cf.meGB / 1000), Math.round(res.cf.euGB / 1000)], backgroundColor: [CLR.me + '33', CLR.eu + '33'], yAxisID: 'yGB' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: tc(), font: { size: 9 } } }, tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? ` ${fmt(ctx.raw)}` : ` ${fmtN(ctx.raw * 1000)} GB` } } },
+      scales: {
+        yCost: { type: 'linear', position: 'left', ticks: { color: tc(), callback: v => '$' + fmtN(v) }, grid: { color: gc() } },
+        yGB: { type: 'linear', position: 'right', ticks: { color: tc(), callback: v => v + 'k' }, grid: { drawOnChartArea: false } },
+        x: { ticks: { color: tc() }, grid: { color: gc() } }
+      }
+    }
+  });
+
+  // ML bar
+  const mlItems = [{ lbl: 'Base', val: res.ml.base, color: CLR.mlBase }];
+  if (res.is4k) {
+    mlItems.push({ lbl: 'CH10_SPL', val: R.ml.ch10Hr * res.h, color: CLR.ch10 });
+    mlItems.push({ lbl: 'CH11_SPL', val: R.ml.ch11Hr * res.h, color: CLR.ch11 });
+  }
+  mkChart('chartML', {
+    type: 'bar',
+    data: {
+      labels: mlItems.map(i => i.lbl),
+      datasets: [{ data: mlItems.map(i => +i.val.toFixed(2)), backgroundColor: mlItems.map(i => i.color + 'BB'), borderColor: mlItems.map(i => i.color), borderWidth: 1 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}` } } },
+      scales: { y: { ticks: { color: tc(), callback: v => '$' + fmtN(v) }, grid: { color: gc() } }, x: { ticks: { color: tc() }, grid: { color: gc() } } }
+    }
+  });
+
+  // MP bar
+  mkChart('chartMP', {
+    type: 'bar',
+    data: {
+      labels: ['Ingest', 'Origination'],
+      datasets: [{ data: [+res.mp.ingest.toFixed(2), +res.mp.orig.toFixed(2)], backgroundColor: [CLR.mp + 'BB', '#f97316BB'], borderColor: [CLR.mp, '#f97316'], borderWidth: 1 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${fmt(ctx.raw)}` } } },
+      scales: { y: { ticks: { color: tc(), callback: v => '$' + fmtN(v) }, grid: { color: gc() } }, x: { ticks: { color: tc() }, grid: { color: gc() } } }
+    }
+  });
+}
+
+// ═══════════════════════════
+//  MONTHLY COMPUTE
+// ═══════════════════════════
+function computeMonthly(f) {
+  const h = f.avgHours || 6;
+  const std = f.stdCount || 0;
+  const k4 = f.k4Count || 0;
+  const total = std + k4;
+
+  // MediaConnect
+  const mcBase = R.mc.fixedMonthly;
+  const mcVar = R.mc.matchDay * (f.matchDays || 0);
+  const mcLI = k4 * R.mc.liHr * h * (f.liFlows || 1);
+  const mcTotal = mcBase + mcVar + mcLI;
+
+  // MediaLive: always-on baseline + per-match × count + 4K incremental
+  const mlPM = f.mlPerMatch || R.ml.defaultPerMatch;
+  const mlBaseline = R.ml.monthlyBaseline;
+  const mlMatches = mlPM * total;
+  const ml4k = R.ml.fourKHr * h * k4;
+  const mlTotal = mlBaseline + mlMatches + ml4k;
+
+  // MediaPackage
+  const totalIn = (f.avgIngest || 0) * total;
+  const totalOr = (f.avgOrig || 0) * total;
+  const mpTotal = totalIn * R.mp.ingestRate + totalOr * R.mp.origRate;
+
+  // CloudFront
+  const totalMe = (f.avgMeGB || 0) * total;
+  const totalEu = (f.avgEuGB || 0) * total;
+  const cfTotal = totalMe * R.cf.me + totalEu * R.cf.eu;
+
+  const grand = mcTotal + mlTotal + mpTotal + cfTotal;
+  return { mcBase, mcVar, mcLI, mcTotal, mlBaseline, mlMatches, ml4k, mlTotal, mpTotal, totalIn, totalOr, cfTotal, totalMe, totalEu, grand, std, k4, total, matchDays: f.matchDays || 0, h, mlPM };
+}
+
+function calculateMonthly() {
+  const f = {
+    monthName: document.getElementById('monthName').value || 'Forecast',
+    matchDays: parseInt(document.getElementById('matchDays').value) || 0,
+    stdCount: parseInt(document.getElementById('stdCount').value) || 0,
+    k4Count: parseInt(document.getElementById('k4Count').value) || 0,
+    avgHours: parseFloat(document.getElementById('avgHoursM').value) || 6,
+    liFlows: parseInt(document.getElementById('liFlowsM').value) || 1,
+    mlPerMatch: parseFloat(document.getElementById('mlPerMatchM').value) || 733,
+    avgIngest: parseFloat(document.getElementById('avgIngestM').value) || 0,
+    avgOrig: parseFloat(document.getElementById('avgOrigM').value) || 0,
+    avgMeGB: parseFloat(document.getElementById('avgMeM').value) || 0,
+    avgEuGB: parseFloat(document.getElementById('avgEuM').value) || 0,
+  };
+  const res = computeMonthly(f);
+  document.getElementById('monthlyEmpty').style.display = 'none';
+  document.getElementById('monthlyContent').style.display = 'block';
+  renderMonthly(res, f);
+}
+
+function renderMonthly(res, f) {
+  const svcs = [
+    { lbl: 'MediaLive', val: res.mlTotal, color: CLR.ml },
+    { lbl: 'CloudFront CDN', val: res.cfTotal, color: CLR.cf },
+    { lbl: 'MediaConnect', val: res.mcTotal, color: CLR.mc },
+    { lbl: 'MediaPackage', val: res.mpTotal, color: CLR.mp },
+  ];
+  const el = document.getElementById('monthlyContent');
+  el.innerHTML = `
+    <div class="total-hero" style="margin-bottom:12px">
+      <div class="total-label">Monthly Forecast — ${f.monthName}</div>
+      <div class="total-amount">${fmt(res.grand)}</div>
+      <div class="total-name">${res.std} standard + ${res.k4} 4K · ${res.matchDays} match days</div>
+      <div class="total-meta">
+        <div class="total-stat"><div class="total-stat-val">${res.total}</div><div class="total-stat-lbl">Total Matches</div></div>
+        <div class="total-stat"><div class="total-stat-val">${fmt(res.grand / Math.max(res.total, 1))}</div><div class="total-stat-lbl">Avg / Match</div></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-hdr"><span class="card-title">Cost Breakdown</span></div>
+      <div class="card-body">
+        ${svcs.map(s => `
+        <div class="bk-row">
+          <div class="bk-swatch" style="background:${s.color}"></div>
+          <div class="bk-name">${s.lbl}</div>
+          <div class="bk-track"><div class="bk-fill" style="width:${pct(s.val, res.grand)};background:${s.color}"></div></div>
+          <div class="bk-amount">${fmt(s.val)}</div>
+          <div class="bk-pct">${pct(s.val, res.grand)}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-hdr"><span class="card-title">MediaLive Detail</span></div>
+      <div class="card-body">
+        <div class="sub-table">
+          <div class="sub-row"><span>Always-on baseline (24/7 channels)</span><span>${fmt(res.mlBaseline)}</span></div>
+          <div class="sub-row"><span>Match cost (${res.total} × $${res.mlPM})</span><span>${fmt(res.mlMatches)}</span></div>
+          ${res.ml4k > 0 ? `<div class="sub-row"><span>4K incremental (${res.k4} × $${R.ml.fourKHr}/hr × ${res.h}h)</span><span>${fmt(res.ml4k)}</span></div>` : ''}
+          <div class="sub-row"><span><b>Total</b></span><span><b>${fmt(res.mlTotal)}</b></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:10px">
+      <div class="card-hdr"><span class="card-title">MediaConnect Detail</span></div>
+      <div class="card-body">
+        <div class="sub-table">
+          <div class="sub-row"><span>Baseline (~19 flows 24/7) <span class="badge badge-wa">WA</span></span><span>${fmt(res.mcBase)}</span></div>
+          <div class="sub-row"><span>Match-day variable (${res.matchDays} days × $112)</span><span>${fmt(res.mcVar)}</span></div>
+          ${res.mcLI > 0 ? `<div class="sub-row"><span>LargeInstance 4K (${res.k4} matches)</span><span>${fmt(res.mcLI)}</span></div>` : ''}
+          <div class="sub-row"><span><b>Total</b></span><span><b>${fmt(res.mcTotal)}</b></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-hdr"><span class="card-title">CDN & MediaPackage Detail</span></div>
+      <div class="card-body">
+        <div class="sub-table">
+          <div class="sub-row"><span>ME Delivery (${fmtGB(res.totalMe)} × $0.007)</span><span>${fmt(res.totalMe * R.cf.me)}</span></div>
+          <div class="sub-row"><span>EU Delivery (${fmtGB(res.totalEu)} × $0.004)</span><span>${fmt(res.totalEu * R.cf.eu)}</span></div>
+          <div class="sub-row"><span>MP Ingest (${fmtGB(res.totalIn)} × $0.036)</span><span>${fmt(res.totalIn * R.mp.ingestRate)}</span></div>
+          <div class="sub-row"><span>MP Origination (${fmtGB(res.totalOr)} × $0.048)</span><span>${fmt(res.totalOr * R.mp.origRate)}</span></div>
+          <div class="sub-row"><span><b>CDN + MP Total</b></span><span><b>${fmt(res.cfTotal + res.mpTotal)}</b></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-lbl">Forecast vs Historical (Stacked)</div>
+      <div style="height:240px"><canvas id="chartMonthlyStack"></canvas></div>
+    </div>`;
+
+  setTimeout(() => {
+    mkChart('chartMonthlyStack', {
+      type: 'bar',
+      data: {
+        labels: ['Apr 2026\n(Actual)', 'May 2026\n(Actual)', `${f.monthName}\n(Forecast)`],
+        datasets: [
+          { label: 'MediaLive', data: [72585, 58402, Math.round(res.mlTotal)], backgroundColor: CLR.ml + 'BB', stack: 's' },
+          { label: 'CloudFront', data: [24467, 24438, Math.round(res.cfTotal)], backgroundColor: CLR.cf + 'BB', stack: 's' },
+          { label: 'MediaConnect', data: [5862, 4186, Math.round(res.mcTotal)], backgroundColor: CLR.mc + 'BB', stack: 's' },
+          { label: 'MediaPackage', data: [4757, 3285, Math.round(res.mpTotal)], backgroundColor: CLR.mp + 'BB', stack: 's' },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: tc(), font: { size: 9 } } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+        scales: {
+          x: { ticks: { color: tc() }, grid: { color: gc() } },
+          y: { stacked: true, ticks: { color: tc(), callback: v => '$' + fmtN(v) }, grid: { color: gc() } }
+        }
+      }
+    });
+  }, 50);
+}
+
+// ═══════════════════════════
+//  HISTORICAL CHARTS
+// ═══════════════════════════
+function renderHistoricalCharts() {
+  mkChart('chartHistSvc', {
+    type: 'bar',
+    data: {
+      labels: ['MediaLive', 'CloudFront', 'MediaConnect', 'MediaPackage'],
+      datasets: [
+        { label: 'April 2026', data: [72585, 24467, 5862, 4757], backgroundColor: CLR.ml + '99', borderColor: CLR.ml, borderWidth: 1 },
+        { label: 'May 2026', data: [58402, 24438, 4186, 3285], backgroundColor: CLR.cf + '99', borderColor: CLR.cf, borderWidth: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: tc(), font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}` } } },
+      scales: { x: { ticks: { color: tc() }, grid: { color: gc() } }, y: { ticks: { color: tc(), callback: v => '$' + fmtN(v) }, grid: { color: gc() } } }
+    }
+  });
+
+  mkChart('chartHistCDN', {
+    type: 'bar',
+    data: {
+      labels: ['ME (Bahrain)', 'EU (Ireland)'],
+      datasets: [
+        { label: 'April 2026', data: [3079836, 727230], backgroundColor: CLR.ml + '99', borderColor: CLR.ml, borderWidth: 1 },
+        { label: 'May 2026', data: [2054784, 2513647], backgroundColor: CLR.cf + '99', borderColor: CLR.cf, borderWidth: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: tc(), font: { size: 10 } } }, tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtGB(ctx.raw)}` } } },
+      scales: { x: { ticks: { color: tc() }, grid: { color: gc() } }, y: { ticks: { color: tc(), callback: v => fmtGB(v) }, grid: { color: gc() } } }
+    }
+  });
+}
+
+// ═══════════════════════════
+//  INIT
+// ═══════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('matchDate').value = new Date().toISOString().split('T')[0];
+  translateAll();
+});
+</script>
+</body>
+</html>
