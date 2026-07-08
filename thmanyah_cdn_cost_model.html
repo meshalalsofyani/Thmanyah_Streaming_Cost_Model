@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thmanyah CDN Cost Model</title>
+<meta name="description" content="CDN provider cost calculator and comparison — CloudFront, Baishan, Wangsu, Akamai for Thmanyah live sports streaming.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root[data-theme="dark"]{
+  --bg:#0f172a;--surface:#1e293b;--surface2:#162032;--border:#2e4060;--border2:#3d5470;
+  --text:#f1f5f9;--muted:#94a3b8;--dim:#64748b;
+  --accent:#3b82f6;--accent-bg:rgba(59,130,246,.1);--accent-border:rgba(59,130,246,.35);
+  --green:#10b981;--green-bg:rgba(16,185,129,.1);--green-border:rgba(16,185,129,.3);
+  --yellow:#f59e0b;--yellow-bg:rgba(245,158,11,.1);--yellow-border:rgba(245,158,11,.3);
+  --red:#ef4444;--red-bg:rgba(239,68,68,.1);--red-border:rgba(239,68,68,.3);
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 4px 16px rgba(0,0,0,.3);
+}
+:root[data-theme="light"]{
+  --bg:#f1f5f9;--surface:#ffffff;--surface2:#f8fafc;--border:#e2e8f0;--border2:#cbd5e1;
+  --text:#0f172a;--muted:#64748b;--dim:#94a3b8;
+  --accent:#2563eb;--accent-bg:rgba(37,99,235,.06);--accent-border:rgba(37,99,235,.3);
+  --green:#059669;--green-bg:rgba(5,150,105,.06);--green-border:rgba(5,150,105,.25);
+  --yellow:#d97706;--yellow-bg:rgba(217,119,6,.06);--yellow-border:rgba(217,119,6,.25);
+  --red:#dc2626;--red-bg:rgba(220,38,38,.06);--red-border:rgba(220,38,38,.25);
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.06);
+}
+
+html{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;transition:background .2s,color .2s}
+
+/* ── HEADER ──────────────────────────────────────── */
+.hdr{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:14px;position:sticky;top:0;z-index:100}
+.hdr-brand{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.logo{width:28px;height:28px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+.hdr-name{font-weight:600;font-size:13px;white-space:nowrap}
+.hdr-sep{color:var(--border2);font-size:16px;flex-shrink:0}
+.hdr-sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-actions{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--muted);font-size:11px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none;white-space:nowrap}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── TABS ────────────────────────────────────────── */
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);display:flex;padding:0 20px}
+.tab{padding:10px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;margin-bottom:-1px}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── PAGE LAYOUT ─────────────────────────────────── */
+.page{max-width:1400px;margin:0 auto;padding:16px}
+.tab-pane{display:none}.tab-pane.active{display:block}
+.two-col{display:grid;grid-template-columns:420px 1fr;gap:14px;align-items:start}
+.form-scroll{max-height:calc(100vh - 108px);overflow-y:auto;padding-right:2px;scrollbar-width:thin}
+.res-scroll{max-height:calc(100vh - 108px);overflow-y:auto}
+
+/* ── CARDS ───────────────────────────────────────── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.card+.card{margin-top:10px}
+.card-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface2)}
+.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.card-meta{font-size:10px;color:var(--dim)}
+.card-body{padding:14px}
+
+/* ── FORMS ───────────────────────────────────────── */
+.fg{margin-bottom:10px}
+.fg:last-child{margin-bottom:0}
+label.lbl{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.hint{font-size:10px;color:var(--dim);margin-top:3px;line-height:1.5}
+input[type="number"],input[type="text"],select{width:100%;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+input:disabled{opacity:.4;cursor:not-allowed}
+
+.section-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:12px 0 8px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.btn-row{display:flex;gap:6px;margin-top:12px}
+.btn-sec{flex:1;padding:7px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all .15s}
+.btn-sec:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── ALERTS ──────────────────────────────────────── */
+.alert{display:flex;gap:8px;padding:8px 10px;border-radius:7px;font-size:11px;line-height:1.55;margin-top:8px}
+.alert-info{background:var(--accent-bg);border:1px solid var(--accent-border);color:var(--muted)}
+.alert-warn{background:var(--yellow-bg);border:1px solid var(--yellow-border);color:var(--muted)}
+.alert-ok{background:var(--green-bg);border:1px solid var(--green-border);color:var(--muted)}
+
+/* ── EMPTY STATE ─────────────────────────────────── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:360px;gap:12px;color:var(--dim);text-align:center;border:1px dashed var(--border);border-radius:10px;padding:40px}
+.empty svg{opacity:.2}
+.empty p{font-size:12px;color:var(--muted);max-width:260px;line-height:1.7}
+
+/* ── DATA TABLE ──────────────────────────────────── */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+.data-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+.data-table tr:last-child td{border-bottom:none}
+.data-table .num{font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.data-table .total-row td{font-weight:700;border-top:1px solid var(--border2);background:var(--surface2)}
+
+/* ── CDN-SPECIFIC: MODE PILLS ────────────────────── */
+.mode-pills{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
+.mode-pill{flex:1;padding:9px 10px;text-align:center;cursor:pointer;font-size:11px;font-weight:500;color:var(--muted);transition:all .15s;border:none;background:none;font-family:inherit;line-height:1.4}
+.mode-pill.active{background:var(--accent);color:#fff}
+.mode-pill:first-child{border-right:1px solid var(--border)}
+
+/* ── PROVIDER CARDS ──────────────────────────────── */
+.providers-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.provider-card{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--pc,var(--border));border-radius:9px;overflow:hidden;transition:border-color .15s,opacity .15s}
+.provider-card:not(.inactive):hover{border-color:var(--pc)}
+.provider-card.inactive{opacity:.48;border-left-color:var(--border)}
+.pc-hdr{display:flex;align-items:flex-start;justify-content:space-between;padding:10px 10px 5px;gap:6px}
+.pc-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.3}
+.pc-sub{font-size:9px;color:var(--dim);margin-top:1px;line-height:1.5}
+.pc-rate{padding:2px 10px 6px;font-size:19px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.pc-rate span{font-size:10px;font-weight:400;color:var(--muted)}
+.pc-body{padding:7px 10px 10px;border-top:1px solid var(--border)}
+.pc-status{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.st-ok{color:var(--green)}
+.st-warn{color:var(--yellow)}
+.pc-input-row{display:flex;align-items:center;gap:5px}
+.pc-input-row input{font-size:12px;padding:5px 8px;text-align:right}
+.pc-input-lbl{font-size:11px;color:var(--muted);flex-shrink:0}
+.pc-cost-out{font-size:11px;font-weight:600;margin-top:4px;text-align:right;color:var(--pc,var(--accent))}
+
+/* ── TOGGLE SWITCH ───────────────────────────────── */
+.sw{position:relative;display:inline-block;width:30px;height:16px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sw-track{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--border2);border-radius:16px;transition:.2s}
+.sw-track:before{position:absolute;content:'';height:12px;width:12px;left:2px;bottom:2px;background:var(--muted);border-radius:50%;transition:.2s}
+.sw input:checked+.sw-track{background:var(--accent)}
+.sw input:checked+.sw-track:before{transform:translateX(14px);background:#fff}
+
+/* ── VALIDATION BAR ──────────────────────────────── */
+.pct-validator{margin:6px 0 10px}
+.pct-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.pct-bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.pct-bar-fill{height:100%;border-radius:3px;background:var(--green);transition:width .2s,background .2s}
+.pct-bar-fill.warn{background:var(--yellow)}
+.pct-bar-fill.over{background:var(--red)}
+.pct-bar-lbl{font-size:11px;font-weight:600;min-width:38px;text-align:right;color:var(--text)}
+.pct-remaining{font-size:10px;color:var(--dim)}
+.pct-remaining.ok{color:var(--green);font-weight:600}
+.pct-remaining.err{color:var(--red);font-weight:600}
+
+/* ── RESULTS ─────────────────────────────────────── */
+.blended-hero{display:flex;gap:8px;margin-bottom:10px}
+.bstat{flex:1;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:9px;text-align:center}
+.bstat.hi{border-color:var(--accent-border);background:var(--accent-bg)}
+.bstat-val{font-size:20px;font-weight:700;color:var(--text);line-height:1.2;font-variant-numeric:tabular-nums}
+.bstat.hi .bstat-val{color:var(--accent)}
+.bstat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
+
+.cdn-table{width:100%;border-collapse:collapse;font-size:12px}
+.cdn-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border)}
+.cdn-table th:not(:first-child){text-align:right}
+.cdn-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text)}
+.cdn-table td:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.cdn-table tfoot td{font-weight:700;border-top:2px solid var(--border2);border-bottom:none;background:var(--surface2)}
+.pdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:middle}
+
+/* ── DISTRIBUTION BAR ────────────────────────────── */
+.dist-bar{display:flex;height:30px;border-radius:7px;overflow:hidden;margin:4px 0 10px}
+.dist-seg{display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:rgba(255,255,255,.85);min-width:0;overflow:hidden;transition:flex .3s;cursor:default}
+.dist-seg:hover{filter:brightness(1.12)}
+.dist-legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.dist-legend-item{display:flex;align-items:center;gap:5px;padding:3px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;font-size:11px}
+
+/* ── RATE BARS (Reference tab) ───────────────────── */
+.rate-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.rate-row:last-child{border-bottom:none}
+.rate-rank{font-size:10px;color:var(--dim);min-width:18px;text-align:center;font-weight:700;background:var(--surface2);border-radius:4px;padding:1px 5px}
+.rate-name{min-width:120px;font-size:12px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+.rate-bar-track{flex:1;height:10px;background:var(--border);border-radius:5px;overflow:hidden}
+.rate-bar-fill{height:100%;border-radius:5px}
+.rate-val{font-size:12px;font-weight:700;min-width:95px;text-align:right;font-variant-numeric:tabular-nums}
+.rate-delta{font-size:10px;color:var(--dim);min-width:46px;text-align:right}
+
+/* ── PROVIDER DETAIL CARDS (Reference tab) ───────── */
+.provider-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:14px}
+.pd-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.pd-card-hdr{padding:10px 14px;border-bottom:1px solid var(--border);border-left:3px solid var(--pc)}
+.pd-rate-big{font-size:30px;font-weight:700;color:var(--text);padding:10px 14px 4px;font-variant-numeric:tabular-nums}
+.pd-rate-big span{font-size:11px;font-weight:400;color:var(--muted)}
+.pd-body{padding:0 14px 14px;font-size:11px;color:var(--muted);line-height:1.7}
+.pd-status{font-size:10px;font-weight:600;padding:0 14px 8px}
+
+/* ── PENDING CARDS ───────────────────────────────── */
+.pending-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+.pend-card{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--red);border-radius:8px;padding:12px}
+.pend-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px}
+.pend-badge{display:inline-flex;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);margin-bottom:5px}
+.pend-costs{font-size:11px;color:var(--muted);margin-bottom:6px}
+.pend-issue{font-size:10px;color:var(--dim);line-height:1.65}
+
+/* ── SHIFT STAT CARDS ────────────────────────────── */
+.shift-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin-bottom:12px}
+.shift-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px}
+.shift-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:4px}
+.shift-val{font-size:20px;font-weight:700;line-height:1.2}
+.shift-sub{font-size:10px;color:var(--muted);margin-top:2px}
+
+/* ── RESPONSIVE ──────────────────────────────────── */
+@media(max-width:900px){
+  .two-col{grid-template-columns:1fr}
+  .form-scroll,.res-scroll{max-height:none}
+}
+@media(max-width:600px){
+  .providers-grid{grid-template-columns:1fr}
+  .blended-hero{flex-direction:column}
+  .hdr-sub{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────── -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <div class="logo">T</div>
+    <span class="hdr-name">Thmanyah</span>
+    <span class="hdr-sep">·</span>
+    <span class="hdr-sub">CDN Cost Model · v1.0 · July 2026</span>
+  </div>
+  <div class="hdr-actions">
+    <button class="icon-btn" onclick="toggleTheme()"><span id="themeTxt">☀ Light</span></button>
+    <a class="icon-btn" href="index.html">← Streaming Calculator</a>
+  </div>
+</header>
+
+<!-- ── TABS ───────────────────────────────────────── -->
+<nav class="tabs">
+  <div class="tab active" data-tab="calculator">CDN Calculator</div>
+  <div class="tab" data-tab="rates">Rate Reference</div>
+  <div class="tab" data-tab="historical">Historical Data</div>
+</nav>
+
+<div class="page">
+
+<!-- ════════════════════════════════════════════════
+     TAB 1 · CDN CALCULATOR
+     ════════════════════════════════════════════════ -->
+<div class="tab-pane active" id="tab-calculator">
+  <div class="two-col">
+
+    <!-- LEFT: Inputs -->
+    <div class="form-scroll">
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title">CDN Cost Calculator</span>
+          <span class="card-meta">5 confirmed providers · July 2026</span>
+        </div>
+        <div class="card-body">
+
+          <!-- Mode selector -->
+          <div class="fg">
+            <label class="lbl">Calculation Mode</label>
+            <div class="mode-pills">
+              <button class="mode-pill active" id="modeABtn" onclick="setMode('A')">Mode A — % Distribution</button>
+              <button class="mode-pill" id="modeBBtn" onclick="setMode('B')">Mode B — Per-Provider GB</button>
+            </div>
+            <div class="hint" id="modeHint">Enter total GB then set each provider's share. Percentages must sum to 100%.</div>
+          </div>
+
+          <!-- Total GB (Mode A) -->
+          <div class="fg" id="totalGBField">
+            <label class="lbl">Total GB Delivered</label>
+            <input type="number" id="totalGB" placeholder="e.g. 930,204" min="0" step="1" oninput="calculate()">
+            <div class="hint">From main calculator: viewers × Mbps × watch_time_sec ÷ 8,192</div>
+          </div>
+
+          <div class="section-label">Active CDN Providers</div>
+          <div class="providers-grid" id="providersGrid"></div>
+
+          <!-- Validation bar (Mode A) -->
+          <div class="pct-validator" id="pctValidator" style="display:none">
+            <div class="pct-bar-row">
+              <div class="pct-bar-track"><div class="pct-bar-fill" id="pctFill" style="width:0%"></div></div>
+              <div class="pct-bar-lbl" id="pctLbl">0%</div>
+            </div>
+            <div class="pct-remaining" id="pctMsg">Enter percentages above — must total 100%</div>
+          </div>
+
+          <!-- Demo loaders -->
+          <div class="btn-row">
+            <button class="btn-sec" onclick="loadDefault()">Default Split</button>
+            <button class="btn-sec" onclick="loadAprData()">Apr 2026</button>
+            <button class="btn-sec" onclick="loadMayData()">May 2026</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Pending providers summary -->
+      <div class="card">
+        <div class="card-hdr">
+          <span class="card-title">Pending Providers</span>
+          <span class="card-meta">Cannot be added — awaiting rate clarification</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Provider</th><th>Apr USD</th><th>May USD</th><th>Issue</th></tr></thead>
+            <tbody>
+              <tr><td><strong>SCCC</strong></td><td class="num">$355,992</td><td class="num">$209,330</td><td style="font-size:10px;color:var(--dim)">CDN bundled into infrastructure</td></tr>
+              <tr><td><strong>Huawei</strong></td><td class="num">$230,076</td><td class="num">$110,585</td><td style="font-size:10px;color:var(--dim)">Unit inconsistency — rate undeivable</td></tr>
+              <tr><td><strong>Tencent</strong></td><td class="num">$33,174</td><td class="num">$28,408</td><td style="font-size:10px;color:var(--dim)">CDN cost not split from storage</td></tr>
+              <tr><td><strong>Zenlayer</strong></td><td class="num">$67,311</td><td class="num">$64,502</td><td style="font-size:10px;color:var(--dim)">Mbps model — may be infra only</td></tr>
+              <tr><td><strong>Visionar</strong></td><td class="num">$62,703</td><td class="num">$61,224</td><td style="font-size:10px;color:var(--dim)">No breakdown — vendor unknown</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /form-scroll -->
+
+    <!-- RIGHT: Results -->
+    <div class="res-scroll">
+
+      <div class="empty" id="emptyState">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/>
+        </svg>
+        <p>Toggle providers on, enter GB or percentages, then watch the cost breakdown update in real time.</p>
+      </div>
+
+      <div id="resultsArea" style="display:none">
+
+        <!-- Hero KPIs -->
+        <div class="blended-hero" id="blendedHero"></div>
+
+        <!-- Breakdown table -->
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-hdr">
+            <span class="card-title">Cost Breakdown</span>
+            <span class="card-meta" id="resultMeta"></span>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="cdn-table">
+              <thead>
+                <tr><th>Provider</th><th>GB Delivered</th><th>Rate / GB</th><th>Share</th><th>Cost</th></tr>
+              </thead>
+              <tbody id="resultBody"></tbody>
+              <tfoot id="resultFoot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+        <!-- Distribution bar + legend -->
+        <div class="card">
+          <div class="card-hdr"><span class="card-title">Traffic Distribution</span></div>
+          <div class="card-body">
+            <div class="dist-bar" id="distBar"></div>
+            <div class="dist-legend" id="distLegend"></div>
+          </div>
+        </div>
+
+      </div><!-- /resultsArea -->
+    </div><!-- /res-scroll -->
+
+  </div><!-- /two-col -->
+</div><!-- /tab-calculator -->
+
+
+<!-- ════════════════════════════════════════════════
+     TAB 2 · RATE REFERENCE
+     ════════════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-rates">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+    <!-- Rate ranking -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Rate Ranking — Cheapest to Most Expensive</span>
+        <span class="card-meta">5 confirmed providers</span>
+      </div>
+      <div class="card-body">
+        <div class="rate-row">
+          <div class="rate-rank">1</div>
+          <div class="rate-name"><span class="pdot" style="background:#06b6d4"></span>CloudFront EU</div>
+          <div class="rate-bar-track"><div class="rate-bar-fill" style="width:47.7%;background:#06b6d4"></div></div>
+          <div class="rate-val" style="color:#06b6d4">$0.00400<span style="font-size:9px;color:var(--dim)">/GB</span></div>
+          <div class="rate-delta">baseline</div>
+        </div>
+        <div class="rate-row">
+          <div class="rate-rank">2</div>
+          <div class="rate-name"><span class="pdot" style="background:#10b981"></span>Wangsu</div>
+          <div class="rate-bar-track"><div class="rate-bar-fill" style="width:66.4%;background:#10b981"></div></div>
+          <div class="rate-val" style="color:#10b981">$0.00557<span style="font-size:9px;color:var(--dim)">/GB</span></div>
+          <div class="rate-delta">+39%</div>
+        </div>
+        <div class="rate-row">
+          <div class="rate-rank">3</div>
+          <div class="rate-name"><span class="pdot" style="background:#8b5cf6"></span>Baishan</div>
+          <div class="rate-bar-track"><div class="rate-bar-fill" style="width:76.6%;background:#8b5cf6"></div></div>
+          <div class="rate-val" style="color:#8b5cf6">$0.00643<span style="font-size:9px;color:var(--dim)">/GB</span></div>
+          <div class="rate-delta">+61%</div>
+        </div>
+        <div class="rate-row">
+          <div class="rate-rank">4</div>
+          <div class="rate-name"><span class="pdot" style="background:#3b82f6"></span>CloudFront ME</div>
+          <div class="rate-bar-track"><div class="rate-bar-fill" style="width:83.4%;background:#3b82f6"></div></div>
+          <div class="rate-val" style="color:#3b82f6">$0.00700<span style="font-size:9px;color:var(--dim)">/GB</span></div>
+          <div class="rate-delta">+75%</div>
+        </div>
+        <div class="rate-row">
+          <div class="rate-rank">5</div>
+          <div class="rate-name"><span class="pdot" style="background:#f59e0b"></span>Akamai</div>
+          <div class="rate-bar-track"><div class="rate-bar-fill" style="width:100%;background:#f59e0b"></div></div>
+          <div class="rate-val" style="color:#f59e0b">$0.00839<span style="font-size:9px;color:var(--dim)">/GB</span></div>
+          <div class="rate-delta">+110%</div>
+        </div>
+        <div class="alert alert-warn" style="margin-top:12px">
+          <span>⚠</span><span>Akamai shows 4.8% rate variance across months — may be volume-tiered. All other 4 providers confirmed perfectly flat to 5 decimal places.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blended rate scenarios -->
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Blended Rate Scenarios</span></div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Scenario</th><th>Distribution</th><th>Blended Rate</th></tr></thead>
+          <tbody>
+            <tr><td>CloudFront ME only</td><td style="color:var(--dim);font-size:11px">100% ME</td><td class="num">$0.00700/GB</td></tr>
+            <tr><td>CloudFront EU only</td><td style="color:var(--dim);font-size:11px">100% EU</td><td class="num" style="color:var(--green)">$0.00400/GB</td></tr>
+            <tr><td>Equal ME + Wangsu</td><td style="color:var(--dim);font-size:11px">50% / 50%</td><td class="num">$0.00629/GB</td></tr>
+            <tr><td>Apr/May typical mix</td><td style="color:var(--dim);font-size:11px">CF ME 40%, Baishan 35%, Wangsu 25%</td><td class="num">$0.00640/GB</td></tr>
+            <tr><td>Cost-optimized</td><td style="color:var(--dim);font-size:11px">Wangsu 50%, Baishan 50%</td><td class="num" style="color:var(--green)">$0.00600/GB</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-body" style="padding-top:0">
+        <div class="alert alert-info">
+          <span>ℹ</span><span>Load any scenario directly in the calculator using the <strong>Default Split</strong>, <strong>Apr 2026</strong>, or <strong>May 2026</strong> buttons.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Cost at common volumes -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-hdr">
+      <span class="card-title">Cost at Common Traffic Volumes</span>
+      <span class="card-meta">All confirmed providers</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Volume</th>
+            <th style="color:#06b6d4">CF EU</th>
+            <th style="color:#10b981">Wangsu</th>
+            <th style="color:#8b5cf6">Baishan</th>
+            <th style="color:#3b82f6">CF ME</th>
+            <th style="color:#f59e0b">Akamai</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>100 GB</td><td class="num">$0.40</td><td class="num">$0.56</td><td class="num">$0.64</td><td class="num">$0.70</td><td class="num">$0.84</td></tr>
+          <tr><td>1 TB</td><td class="num">$4.10</td><td class="num">$5.71</td><td class="num">$6.59</td><td class="num">$7.17</td><td class="num">$8.60</td></tr>
+          <tr><td>100 TB</td><td class="num">$409.60</td><td class="num">$570.57</td><td class="num">$658.56</td><td class="num">$716.80</td><td class="num">$859.97</td></tr>
+          <tr><td>500 TB</td><td class="num">$2,048</td><td class="num">$2,853</td><td class="num">$3,293</td><td class="num">$3,584</td><td class="num">$4,300</td></tr>
+          <tr><td>1 PB</td><td class="num">$4,096</td><td class="num">$5,705</td><td class="num">$6,585</td><td class="num">$7,168</td><td class="num">$8,599</td></tr>
+          <tr class="total-row"><td>2.5 PB</td><td class="num">$10,240</td><td class="num">$14,263</td><td class="num">$16,463</td><td class="num">$17,920</td><td class="num">$21,498</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Provider detail cards -->
+  <div class="provider-detail-grid">
+
+    <div class="pd-card" style="--pc:#3b82f6">
+      <div class="pd-card-hdr">
+        <div class="card-title" style="color:#3b82f6">CloudFront ME — Bahrain</div>
+        <div class="card-meta">AWS · Primary MEA delivery</div>
+      </div>
+      <div class="pd-rate-big">$0.00700<span>/GB</span></div>
+      <div class="pd-status st-ok">✓ Confirmed flat rate — private contracted pricing</div>
+      <div class="pd-body">Primary viewer-facing delivery for MEA and North Africa. 1.75× more per GB than EU rate. Not public tiered pricing — privately negotiated.</div>
+    </div>
+
+    <div class="pd-card" style="--pc:#06b6d4">
+      <div class="pd-card-hdr">
+        <div class="card-title" style="color:#06b6d4">CloudFront EU — Ireland</div>
+        <div class="card-meta">AWS · Origin egress + emergency backup</div>
+      </div>
+      <div class="pd-rate-big">$0.00400<span>/GB</span></div>
+      <div class="pd-status st-ok">✓ Confirmed flat rate · 43% cheaper than ME</div>
+      <div class="pd-body">Used as primary delivery during May 2026 AWS ME region incident. Higher MEA viewer latency when used as primary. Single-point-of-failure risk if ME removed entirely.</div>
+    </div>
+
+    <div class="pd-card" style="--pc:#10b981">
+      <div class="pd-card-hdr">
+        <div class="card-title" style="color:#10b981">Wangsu 网宿科技</div>
+        <div class="card-meta">Cheapest confirmed third-party CDN</div>
+      </div>
+      <div class="pd-rate-big">$0.00557<span>/GB</span></div>
+      <div class="pd-status st-ok">✓ Perfectly flat — 0.000% variance across 2 months</div>
+      <div class="pd-body">Apr: 806,997 GB → $4,496 &nbsp;·&nbsp; May: 747,361 GB → $4,164. Rate identical to 5 decimal places both months. Lowest-cost CDN for third-party traffic.</div>
+    </div>
+
+    <div class="pd-card" style="--pc:#8b5cf6">
+      <div class="pd-card-hdr">
+        <div class="card-title" style="color:#8b5cf6">Baishan 白山</div>
+        <div class="card-meta">Highest third-party volume</div>
+      </div>
+      <div class="pd-rate-big">$0.00643<span>/GB</span></div>
+      <div class="pd-status st-ok">✓ Perfectly flat — held stable through 2.4× volume surge in May</div>
+      <div class="pd-body">Apr: 2.25M GB → $14,493 &nbsp;·&nbsp; May: 5.42M GB → $34,874. Rate completely unchanged despite volume doubling during the AWS ME incident. Confirms flat-rate contract.</div>
+    </div>
+
+    <div class="pd-card" style="--pc:#f59e0b">
+      <div class="pd-card-hdr">
+        <div class="card-title" style="color:#f59e0b">Akamai</div>
+        <div class="card-meta">Most expensive confirmed CDN · rate varies slightly</div>
+      </div>
+      <div class="pd-rate-big">$0.00839<span>/GB <span style="color:var(--yellow);font-size:10px">±4.8%</span></span></div>
+      <div class="pd-status st-warn">⚠ Minor variance — May rate used as default (higher volume = lower rate)</div>
+      <div class="pd-body">Apr: $0.00880/GB (777K GB) → $6,841 &nbsp;·&nbsp; May: $0.00839/GB (1.03M GB) → $8,663. Likely volume-based tier. Contract rate card needed to confirm.</div>
+    </div>
+
+  </div>
+
+  <!-- Pending provider details -->
+  <div class="card" style="margin-top:14px">
+    <div class="card-hdr">
+      <span class="card-title">Pending Providers — Cannot Be Added to Calculator</span>
+      <span class="card-meta">Awaiting operator clarification on all 5</span>
+    </div>
+    <div class="card-body">
+      <div class="pending-grid">
+        <div class="pend-card">
+          <div class="pend-name">SCCC</div>
+          <div class="pend-badge">Pending</div>
+          <div class="pend-costs">Apr $355,992 · May $209,330</div>
+          <div class="pend-issue">Carries ~1.5–2M GB/month (OverseasNetworkOut) but allocates $0 to CDN — full cost in Block Storage. Tagged "Sparkoo" — unclear if sub-brand. Rate not derivable.</div>
+        </div>
+        <div class="pend-card">
+          <div class="pend-name">Huawei Cloud</div>
+          <div class="pend-badge">Pending</div>
+          <div class="pend-costs">Apr $230,076 · May $110,585</div>
+          <div class="pend-issue">Mixes CDN + full cloud infrastructure (ECS, RDS, OBS). CDN row uses "Byte·Day" in April vs "Byte" in May — unit inconsistency makes GB conversion impossible. Implied rate $7.52/GB confirms not CDN-only.</div>
+        </div>
+        <div class="pend-card">
+          <div class="pend-name">Tencent Cloud</div>
+          <div class="pend-badge">Pending</div>
+          <div class="pend-costs">Apr $33,174 · May $28,408</div>
+          <div class="pend-issue">CSS shows 1.23M GB overseas streaming in April but full cost allocated to COS storage. CSS and TEO CDN rows show $0. Need cost split from operator.</div>
+        </div>
+        <div class="pend-card">
+          <div class="pend-name">Zenlayer</div>
+          <div class="pend-badge">Pending</div>
+          <div class="pend-costs">Apr $67,311 · May $64,502</div>
+          <div class="pend-issue">Bills by 95th-percentile Mbps bandwidth — not GB consumed. Fundamentally different billing model. Service appears to cover bare metal servers and cloud networking, not viewer CDN delivery.</div>
+        </div>
+        <div class="pend-card">
+          <div class="pend-name">Visionar</div>
+          <div class="pend-badge">Pending</div>
+          <div class="pend-costs">Apr $62,703 · May $61,224</div>
+          <div class="pend-issue">Most opaque vendor in the entire bill. Two months of ~$62K with zero breakdown — no category, no resource, no unit, no GB. Consistent monthly cost suggests fixed contract. Cannot classify without information.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /tab-rates -->
+
+
+<!-- ════════════════════════════════════════════════
+     TAB 3 · HISTORICAL DATA
+     ════════════════════════════════════════════════ -->
+<div class="tab-pane" id="tab-historical">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+    <!-- Monthly summary -->
+    <div class="card">
+      <div class="card-hdr"><span class="card-title">Monthly Summary — Confirmed Providers Only</span></div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Month</th><th>Total GB</th><th>Total Cost</th><th>Blended Rate</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>April 2026</strong></td>
+              <td class="num">7,646,321 GB</td>
+              <td class="num">$50,297</td>
+              <td class="num" style="color:var(--yellow)">$0.00658/GB</td>
+            </tr>
+            <tr>
+              <td><strong>May 2026</strong></td>
+              <td class="num">11,773,464 GB</td>
+              <td class="num">$72,139</td>
+              <td class="num" style="color:var(--green)">$0.00613/GB</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-body" style="padding-top:0">
+        <div class="alert alert-ok">
+          <span>↘</span>
+          <span>Blended rate dropped $0.00045/GB in May despite 54% more traffic — cheaper EU and Baishan absorbed rerouted traffic during AWS ME incident, lowering the effective rate.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">Traffic by Provider — April vs May</span>
+      </div>
+      <div class="card-body">
+        <div style="height:200px"><canvas id="chartHistGB"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+
+    <!-- April distribution -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">April 2026 — Distribution</span>
+        <span class="card-meta">7,646,321 GB · $50,297 · $0.00658 blended</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Provider</th><th>GB</th><th>GB %</th><th>Cost</th><th>Cost %</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pdot" style="background:#3b82f6"></span>CloudFront ME</td><td class="num">3,079,836</td><td class="num">40.3%</td><td class="num">$21,558</td><td class="num">42.9%</td></tr>
+            <tr><td><span class="pdot" style="background:#8b5cf6"></span>Baishan</td><td class="num">2,254,494</td><td class="num">29.5%</td><td class="num">$14,493</td><td class="num">28.8%</td></tr>
+            <tr><td><span class="pdot" style="background:#f59e0b"></span>Akamai</td><td class="num">777,764</td><td class="num">10.2%</td><td class="num">$6,841</td><td class="num">13.6%</td></tr>
+            <tr><td><span class="pdot" style="background:#10b981"></span>Wangsu</td><td class="num">806,997</td><td class="num">10.6%</td><td class="num">$4,496</td><td class="num">8.9%</td></tr>
+            <tr><td><span class="pdot" style="background:#06b6d4"></span>CloudFront EU</td><td class="num">727,230</td><td class="num">9.5%</td><td class="num">$2,909</td><td class="num">5.8%</td></tr>
+            <tr class="total-row"><td><strong>Total</strong></td><td class="num"><strong>7,646,321</strong></td><td class="num">100%</td><td class="num"><strong>$50,297</strong></td><td class="num">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- May distribution -->
+    <div class="card">
+      <div class="card-hdr">
+        <span class="card-title">May 2026 — Distribution</span>
+        <span class="card-meta">11,773,464 GB · $72,139 · $0.00613 blended · AWS ME incident</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Provider</th><th>GB</th><th>GB %</th><th>Cost</th><th>Cost %</th></tr></thead>
+          <tbody>
+            <tr><td><span class="pdot" style="background:#8b5cf6"></span>Baishan</td><td class="num">5,424,837</td><td class="num">46.1%</td><td class="num">$34,874</td><td class="num">48.3%</td></tr>
+            <tr><td><span class="pdot" style="background:#06b6d4"></span>CloudFront EU</td><td class="num">2,513,647</td><td class="num">21.3%</td><td class="num">$10,055</td><td class="num">13.9%</td></tr>
+            <tr><td><span class="pdot" style="background:#3b82f6"></span>CloudFront ME</td><td class="num">2,054,784</td><td class="num">17.5%</td><td class="num">$14,383</td><td class="num">19.9%</td></tr>
+            <tr><td><span class="pdot" style="background:#f59e0b"></span>Akamai</td><td class="num">1,032,835</td><td class="num">8.8%</td><td class="num">$8,663</td><td class="num">12.0%</td></tr>
+            <tr><td><span class="pdot" style="background:#10b981"></span>Wangsu</td><td class="num">747,361</td><td class="num">6.3%</td><td class="num">$4,164</td><td class="num">5.8%</td></tr>
+            <tr class="total-row"><td><strong>Total</strong></td><td class="num"><strong>11,773,464</strong></td><td class="num">100%</td><td class="num"><strong>$72,139</strong></td><td class="num">100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- May shift analysis -->
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">May 2026 Traffic Shift — AWS ME Region Incident</span>
+    </div>
+    <div class="card-body">
+      <div class="shift-grid">
+        <div class="shift-card">
+          <div class="shift-lbl">Baishan — absorbs most</div>
+          <div class="shift-val" style="color:#8b5cf6">29.5% → 46.1%</div>
+          <div class="shift-sub">+2.4× volume · rate stayed perfectly flat</div>
+        </div>
+        <div class="shift-card">
+          <div class="shift-lbl">CloudFront EU — backup activated</div>
+          <div class="shift-val" style="color:#06b6d4">9.5% → 21.3%</div>
+          <div class="shift-sub">+3.5× volume · higher MEA viewer latency</div>
+        </div>
+        <div class="shift-card">
+          <div class="shift-lbl">CloudFront ME — drops sharply</div>
+          <div class="shift-val" style="color:#3b82f6">40.3% → 17.5%</div>
+          <div class="shift-sub">−33% volume · AWS Bahrain region incident</div>
+        </div>
+        <div class="shift-card">
+          <div class="shift-lbl">Blended rate — improves despite crisis</div>
+          <div class="shift-val" style="color:var(--green)">$0.00658 → $0.00613</div>
+          <div class="shift-sub">−6.8% cheaper/GB · cheaper CDNs absorbed the load</div>
+        </div>
+      </div>
+      <div class="alert alert-warn">
+        <span>⚠</span>
+        <span>The May 2026 shift was forced by an unplanned AWS ME incident, not a cost-optimization decision. Baishan successfully absorbed 2.4× normal volume with zero rate change, confirming the flat-rate contract holds under surge conditions.</span>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /tab-historical -->
+
+</div><!-- /page -->
+
+<script>
+/* ── PROVIDER DATA ───────────────────────────────── */
+const PROVIDERS = [
+  { id:'cf_me',   name:'CloudFront ME', sub:'AWS · Bahrain (MEA)',  rate:0.00700, color:'#3b82f6', status:'ok',   note:null },
+  { id:'cf_eu',   name:'CloudFront EU', sub:'AWS · Ireland (EU)',   rate:0.00400, color:'#06b6d4', status:'ok',   note:'Backup / origin egress' },
+  { id:'wangsu',  name:'Wangsu',        sub:'网宿科技 · Global',     rate:0.00557, color:'#10b981', status:'ok',   note:'Cheapest confirmed CDN' },
+  { id:'baishan', name:'Baishan',       sub:'白山 · Global',        rate:0.00643, color:'#8b5cf6', status:'ok',   note:null },
+  { id:'akamai',  name:'Akamai',        sub:'Global CDN',            rate:0.00839, color:'#f59e0b', status:'warn', note:'±4.8% rate variance' },
+];
+
+/* ── STATE ───────────────────────────────────────── */
+let S = {
+  mode:   'A',
+  totalGB:'',
+  active: { cf_me:true,  cf_eu:false, wangsu:true,  baishan:true,  akamai:false },
+  pct:    { cf_me:'40',  cf_eu:'',    wangsu:'25',   baishan:'35',  akamai:''   },
+  gb:     { cf_me:'',    cf_eu:'',    wangsu:'',     baishan:'',    akamai:''   },
+};
+
+let histChart = null;
+
+/* ── HELPERS ─────────────────────────────────────── */
+function fmt(n, d=2) {
+  if (!isFinite(n)) return '—';
+  return n.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function fmtG(n) {
+  if (!isFinite(n) || n <= 0) return '—';
+  if (n >= 1e9) return (n/1e9).toFixed(3) + ' PB';
+  if (n >= 1e6) return (n/1e6).toFixed(3) + ' TB';
+  return Math.round(n).toLocaleString() + ' GB';
+}
+function tc() { return document.documentElement.getAttribute('data-theme')==='dark' ? '#94a3b8' : '#64748b'; }
+function gc() { return document.documentElement.getAttribute('data-theme')==='dark' ? 'rgba(46,64,96,.5)' : 'rgba(226,232,240,.8)'; }
+
+/* ── MODE ────────────────────────────────────────── */
+function setMode(mode) {
+  S.mode = mode;
+  document.getElementById('modeABtn').classList.toggle('active', mode==='A');
+  document.getElementById('modeBBtn').classList.toggle('active', mode==='B');
+  document.getElementById('totalGBField').style.display = mode==='A' ? '' : 'none';
+  document.getElementById('pctValidator').style.display = mode==='A' ? '' : 'none';
+  document.getElementById('modeHint').textContent = mode==='A'
+    ? 'Enter total GB then distribute across active providers. Shares must sum to 100%.'
+    : 'Enter actual GB per provider — from provider dashboards or operator billing reports. No sum validation needed.';
+  renderCards();
+  calculate();
+}
+
+/* ── TOGGLE & INPUTS ─────────────────────────────── */
+function toggleProvider(id, checked) {
+  S.active[id] = checked;
+  if (!checked) { S.pct[id] = ''; S.gb[id] = ''; }
+  renderCards();
+  calculate();
+}
+function onPct(id, v) { S.pct[id] = v; updateBar(); calculate(); }
+function onGB(id, v)  { S.gb[id]  = v; calculate(); }
+
+/* ── RENDER CARDS ────────────────────────────────── */
+function renderCards() {
+  document.getElementById('providersGrid').innerHTML = PROVIDERS.map(p => {
+    const on = S.active[p.id];
+    const cost = calcCost(p);
+    const inp = on
+      ? (S.mode==='A'
+        ? '<div class="pc-input-row"><input type="number" value="' + (S.pct[p.id]||'') + '" min="0" max="100" placeholder="%" oninput="onPct(\''+p.id+'\',this.value)"><span class="pc-input-lbl">%</span></div>'
+        : '<div class="pc-input-row"><input type="number" value="' + (S.gb[p.id]||'') + '" min="0" placeholder="GB" oninput="onGB(\''+p.id+'\',this.value)"><span class="pc-input-lbl">GB</span></div>')
+      : '<div class="hint" style="margin:0">Toggle on to include</div>';
+    return (
+      '<div class="provider-card'+(on?'':' inactive')+'" style="--pc:'+p.color+'">' +
+        '<div class="pc-hdr">' +
+          '<div><div class="pc-name">'+p.name+'</div><div class="pc-sub">'+p.sub+'</div></div>' +
+          '<label class="sw"><input type="checkbox"'+(on?' checked':'')+' onchange="toggleProvider(\''+p.id+'\',this.checked)"><span class="sw-track"></span></label>' +
+        '</div>' +
+        '<div class="pc-rate">$'+p.rate.toFixed(5)+'<span>/GB</span></div>' +
+        '<div class="pc-body">' +
+          '<div class="pc-status '+(p.status==='ok'?'st-ok':'st-warn')+'">'+(p.status==='ok'?'✓ Confirmed':'⚠ Rate varies')+(p.note?' · '+p.note:'')+'</div>' +
+          inp +
+          (on && cost>0 ? '<div class="pc-cost-out">→ $'+fmt(cost)+'</div>' : '') +
+        '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function calcCost(p) {
+  if (!S.active[p.id]) return 0;
+  if (S.mode==='A') {
+    const tgb = parseFloat(S.totalGB)||0;
+    return tgb * (parseFloat(S.pct[p.id])||0) / 100 * p.rate;
+  }
+  return (parseFloat(S.gb[p.id])||0) * p.rate;
+}
+
+/* ── VALIDATION BAR ──────────────────────────────── */
+function updateBar() {
+  const active = PROVIDERS.filter(p => S.active[p.id]);
+  const sum = active.reduce((s,p) => s + (parseFloat(S.pct[p.id])||0), 0);
+  const w = Math.min(sum/120*100, 100);
+  const fill = document.getElementById('pctFill');
+  fill.style.width = w + '%';
+  fill.className = 'pct-bar-fill' + (sum>100?' over':sum<80?' warn':'');
+  document.getElementById('pctLbl').textContent = sum.toFixed(1) + '%';
+  const msg = document.getElementById('pctMsg');
+  const diff = 100 - sum;
+  if (Math.abs(diff) < 0.01) {
+    msg.textContent = '✓ Distribution totals exactly 100%';
+    msg.className = 'pct-remaining ok';
+  } else if (diff > 0) {
+    msg.textContent = diff.toFixed(1) + '% remaining — must total 100%';
+    msg.className = 'pct-remaining';
+  } else {
+    msg.textContent = Math.abs(diff).toFixed(1) + '% over 100% — reduce allocations';
+    msg.className = 'pct-remaining err';
+  }
+}
+
+/* ── CALCULATE ───────────────────────────────────── */
+function calculate() {
+  if (S.mode==='A') updateBar();
+  const active = PROVIDERS.filter(p => S.active[p.id]);
+  if (!active.length) { showEmpty(); return; }
+
+  let rows = [], totalCost = 0, totalGB = 0;
+
+  if (S.mode==='A') {
+    const tgb = parseFloat(S.totalGB)||0;
+    if (tgb <= 0) { showEmpty(); return; }
+    const sum = active.reduce((s,p) => s+(parseFloat(S.pct[p.id])||0), 0);
+    if (Math.abs(sum-100) > 0.01) { showEmpty(); return; }
+    rows = active.map(p => {
+      const pct = parseFloat(S.pct[p.id])||0;
+      const gb  = tgb * pct / 100;
+      const cost = gb * p.rate;
+      totalCost += cost; totalGB += gb;
+      return { ...p, pct, gb, cost };
+    });
+  } else {
+    rows = active.map(p => {
+      const gb   = parseFloat(S.gb[p.id])||0;
+      const cost = gb * p.rate;
+      totalCost += cost; totalGB += gb;
+      return { ...p, gb, cost, pct:0 };
+    });
+    if (totalGB <= 0) { showEmpty(); return; }
+    rows = rows.map(r => ({ ...r, pct: r.gb/totalGB*100 }));
+  }
+
+  renderResults(rows, totalCost, totalGB);
+}
+
+function showEmpty() {
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('resultsArea').style.display = 'none';
+}
+
+/* ── RENDER RESULTS ──────────────────────────────── */
+function renderResults(rows, totalCost, totalGB) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('resultsArea').style.display = '';
+  const blended = totalGB > 0 ? totalCost/totalGB : 0;
+
+  document.getElementById('blendedHero').innerHTML =
+    '<div class="bstat hi"><div class="bstat-val">$'+blended.toFixed(5)+'</div><div class="bstat-lbl">Blended Rate / GB</div></div>' +
+    '<div class="bstat"><div class="bstat-val">$'+fmt(totalCost)+'</div><div class="bstat-lbl">Total CDN Cost</div></div>' +
+    '<div class="bstat"><div class="bstat-val">'+fmtG(totalGB)+'</div><div class="bstat-lbl">Total GB Delivered</div></div>';
+
+  document.getElementById('resultMeta').textContent = rows.length + ' active provider' + (rows.length>1?'s':'');
+
+  document.getElementById('resultBody').innerHTML = rows.map(r =>
+    '<tr>' +
+      '<td><span class="pdot" style="background:'+r.color+'"></span>'+r.name+'</td>' +
+      '<td>'+fmtG(r.gb)+'</td>' +
+      '<td>$'+r.rate.toFixed(5)+'</td>' +
+      '<td>'+r.pct.toFixed(1)+'%</td>' +
+      '<td style="color:var(--accent);font-weight:600">$'+fmt(r.cost)+'</td>' +
+    '</tr>'
+  ).join('');
+
+  document.getElementById('resultFoot').innerHTML =
+    '<tr>' +
+      '<td>'+rows.length+' providers total</td>' +
+      '<td>'+fmtG(totalGB)+'</td>' +
+      '<td style="color:var(--dim)">$'+blended.toFixed(5)+' blended</td>' +
+      '<td>100%</td>' +
+      '<td>$'+fmt(totalCost)+'</td>' +
+    '</tr>';
+
+  // Distribution bar
+  document.getElementById('distBar').innerHTML = rows.map(r =>
+    '<div class="dist-seg" style="flex:'+r.pct.toFixed(2)+';background:'+r.color+'" title="'+r.name+': '+r.pct.toFixed(1)+'%">' +
+      (r.pct > 9 ? r.pct.toFixed(0)+'%' : '') +
+    '</div>'
+  ).join('');
+
+  // Legend
+  document.getElementById('distLegend').innerHTML = rows.map(r =>
+    '<div class="dist-legend-item">' +
+      '<div style="width:9px;height:9px;border-radius:50%;background:'+r.color+';flex-shrink:0"></div>' +
+      '<span style="font-weight:500">'+r.name+'</span>' +
+      '<span style="color:var(--dim)">'+r.pct.toFixed(1)+'%</span>' +
+      '<span style="color:var(--accent);font-weight:600">$'+fmt(r.cost)+'</span>' +
+    '</div>'
+  ).join('');
+}
+
+/* ── DEMO LOADERS ────────────────────────────────── */
+function loadDefault() {
+  S = { mode:'A', totalGB:'930204',
+    active: {cf_me:true, cf_eu:false, wangsu:true, baishan:true, akamai:false},
+    pct:    {cf_me:'40', cf_eu:'',   wangsu:'25',  baishan:'35', akamai:''},
+    gb:     {cf_me:'',   cf_eu:'',   wangsu:'',    baishan:'',   akamai:''},
+  };
+  document.getElementById('totalGB').value = '930204';
+  setMode('A');
+}
+
+function loadAprData() {
+  S = { mode:'B', totalGB:'',
+    active: {cf_me:true, cf_eu:true, wangsu:true, baishan:true, akamai:true},
+    pct:    {cf_me:'', cf_eu:'', wangsu:'', baishan:'', akamai:''},
+    gb:     {cf_me:'3079836', cf_eu:'727230', wangsu:'806997', baishan:'2254494', akamai:'777764'},
+  };
+  setMode('B');
+}
+
+function loadMayData() {
+  S = { mode:'B', totalGB:'',
+    active: {cf_me:true, cf_eu:true, wangsu:true, baishan:true, akamai:true},
+    pct:    {cf_me:'', cf_eu:'', wangsu:'', baishan:'', akamai:''},
+    gb:     {cf_me:'2054784', cf_eu:'2513647', wangsu:'747361', baishan:'5424837', akamai:'1032835'},
+  };
+  setMode('B');
+}
+
+/* ── HISTORICAL CHART ────────────────────────────── */
+function renderHistoricalCharts() {
+  if (histChart) { histChart.destroy(); histChart = null; }
+  const ctx = document.getElementById('chartHistGB').getContext('2d');
+  histChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['CF ME','CF EU','Wangsu','Baishan','Akamai'],
+      datasets: [
+        {
+          label: 'April 2026',
+          data: [3079836, 727230, 806997, 2254494, 777764],
+          backgroundColor: ['#3b82f699','#06b6d499','#10b98199','#8b5cf699','#f59e0b99'],
+          borderColor:     ['#3b82f6',  '#06b6d4',  '#10b981',  '#8b5cf6',  '#f59e0b'],
+          borderWidth: 1,
+        },
+        {
+          label: 'May 2026',
+          data: [2054784, 2513647, 747361, 5424837, 1032835],
+          backgroundColor: ['#3b82f633','#06b6d433','#10b98133','#8b5cf633','#f59e0b33'],
+          borderColor:     ['#3b82f6',  '#06b6d4',  '#10b981',  '#8b5cf6',  '#f59e0b'],
+          borderWidth: 2,
+        }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: { labels: { color:tc(), font:{size:10} } },
+        tooltip: { callbacks: { label: ctx => ' '+ctx.dataset.label+': '+fmtG(ctx.raw) } }
+      },
+      scales: {
+        x: { ticks:{ color:tc(), font:{size:10} }, grid:{ color:gc() } },
+        y: { ticks:{ color:tc(), callback: v => fmtG(v) }, grid:{ color:gc() } }
+      }
+    }
+  });
+}
+
+/* ── THEME ───────────────────────────────────────── */
+function toggleTheme() {
+  const t = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeTxt').textContent = t==='dark' ? '☀ Light' : '☾ Dark';
+  if (histChart) setTimeout(renderHistoricalCharts, 50);
+}
+
+/* ── TABS ────────────────────────────────────────── */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+    if (tab.dataset.tab==='historical') setTimeout(renderHistoricalCharts, 50);
+  });
+});
+
+/* ── INIT ────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  renderCards();
+  loadDefault();
+});
+</script>
+</body>
+</html>
