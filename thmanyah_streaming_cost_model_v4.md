@@ -8,21 +8,22 @@
 
 ## Model Accuracy Statement
 
-This model is built entirely from historical billing data (April–May 2026), confirmed contracted rates, and real match data from Conviva. Every number is derived from real AWS bills and real viewer data — not theoretical calculations.
+This model is built entirely from historical billing data (April–May 2026), contracted rates, and real match data from Conviva. Every number is derived from real AWS bills and real viewer data — not theoretical calculations.
 
 **Stated accuracy per service:**
 
 | Service | Accuracy | Confidence | Notes |
 |---|---|---|---|
-| CloudFront | ±5% | 95% | Contracted flat rate — most reliable component |
-| MediaLive | ±50% | 60% | Channel configuration varies — no stable per-match formula |
+| CloudFront | ±5% | 95% | rate — most reliable component |
+| MediaLive (always-on) | ±50% | 60% | Historical weighted average — includes always-on overhead |
+| MediaLive (on-demand) | ±20% | 75% | Rate card calculation — theoretical, not yet validated against live on-demand billing |
 | MediaConnect | ±25% | 70% | Close to actual on validated matches |
-| MediaPackage (small <10K) | ±15% | 80% | From confirmed Apr 10 data |
+| MediaPackage (small <10K) | ±15% | 80% | From Apr 10 data |
 | MediaPackage (medium 10K–150K) | ±35% | 65% | From monthly bill average |
-| MediaPackage (large >150K) | ±5% | 95% | From confirmed May 12 data |
+| MediaPackage (large >150K) | ±5% | 90% | From May 12 data |
 | **Full pipeline** | **±30%** | **70%** | Validated on May 12 at 4.7% off |
 
-**Validated on May 12 Al Hilal vs Al Nassr:** model was 4.7% off confirmed actual of $6,933.55.
+**Validated on May 12 Al Hilal vs Al Nassr:** model was 4.7% off actual of $6,933.55.
 
 **Why MediaLive cannot be precisely modeled:**
 MediaLive cost is driven by how many channels are active and for how long — not by viewer count or match count. This varied dramatically across April (single match day Apr 10 cost $4,625 while 3-match day Apr 29 cost only $1,598). Until the transition to full on-demand operation is complete and a clean season bill is available, the weighted average of $736/match is the best estimate.
@@ -99,7 +100,6 @@ End Viewers — MEA + North Africa only
 - CDN layer has multiple providers — CloudFront is currently primary
 - MCR is in Ireland — all encoding infrastructure is in Frankfurt
 - Viewers are MEA and North Africa only — no other regions served
-- EU CloudFront handles origin egress and served as emergency fallback during AWS ME region incident (May 2026)
 - ME CloudFront costs 1.75× more per GB than EU CloudFront at current contracted rates
 
 ---
@@ -143,7 +143,7 @@ Viewers do not always stream at peak quality. ABR (Adaptive Bitrate) automatical
 
 **Step 1 — GB per viewer:**
 ```
-GB per viewer = total GB delivered ÷ total unique viewers
+GB per viewer = total GB delivered ÷ number of viewers
 ```
 
 **Step 2 — Actual bitrate:**
@@ -151,9 +151,9 @@ GB per viewer = total GB delivered ÷ total unique viewers
 Actual Mbps = GB per viewer × 8,192 ÷ (watch_time_mins × 60)
 ```
 
-### 3.3 Confirmed data points across 6 matches
+### 3.3  data points across 6 matches
 
-| Match | Viewers | Watch time | Total GB | GB/viewer | Actual Mbps |
+| Match | Number of viewers | Watch time | Total GB | GB/viewer | Actual Mbps |
 |---|---|---|---|---|---|
 | Apr 7 (2 matches) | 1,980 total | 33.12 mins | 1,887.78 GB | 0.953 | **3.93** |
 | Apr 10 FDL (1 match) | 2,650 | 35.93 mins | 2,844.14 GB | 1.073 | **4.08** |
@@ -181,6 +181,9 @@ The data shows a clear pattern: larger audiences have lower average bitrate. Thi
 ```
 GB = viewers × bitrate_Mbps × (watch_time_mins × 60) ÷ 8,192
 
+8,192 is a fixed unit conversion: 1 GB = 8 × 1,024 Megabits = 8,192 Megabits.
+Dividing by 8,192 converts the result from Megabits to Gigabytes.
+
 Where bitrate_Mbps auto-selects:
   viewers < 10,000  → 4.0 Mbps
   viewers 10K–150K  → 3.9 Mbps
@@ -201,7 +204,7 @@ GB per viewer varies per match based on watch time and viewer size. The 2.46 GB 
 
 These costs exist every month regardless of match count. They are **read-only** in the calculator. The methodology for each number is shown for transparency.
 
-**Baseline source:** May 28–31 daily average — confirmed no-match days, end of season.
+**Baseline source:** May 28–31 daily average no-match days, end of season.
 
 **Why May 28–31:**
 These 4 days showed identical costs to the cent across all three services — confirming no match activity. They represent the full channel set running at end of season with zero viewer activity. This is the cleanest no-match baseline available within the season. June was not used as baseline because it included testing activity that made it unreliable as a pure fixed-cost reference.
@@ -212,7 +215,7 @@ These 4 days showed identical costs to the cent across all three services — co
 | MediaConnect | $108.53/day | **$3,256/month** | May 28–31 identical cost — ~19 flows active |
 | MediaPackage | $23.01/day | **$690/month** | May 28–31 average — infrastructure ingest only |
 | CloudFront ops | ~$200/month | **~$200/month** | Estimated from low-traffic days |
-| **Total fixed** | | **~$65,943/month** | |
+| **Total fixed** | **~$65,943/month** |
 
 **MediaLive fixed cost note:**
 The $61,797/month reflects channels running continuously at end of season. As transition to full on-demand operation completes (channels only start when a match begins and stop after), this fixed cost will drop significantly — toward only the idle channel fee of $0.01/hr per channel (~$216/month for 15 channels). The model will be updated once a full on-demand season is available.
@@ -258,7 +261,7 @@ Weighted average across April (95) + May (83) = 178 total matches
 | Inbound Ireland→Frankfurt | $0.00/GB | **Free** | Intra-AWS EU transfer |
 | Regional transfer Frankfurt | $0.01/GB | **$0.008/GB** | MediaConnect → MediaLive internal hop |
 
-**Flow structure — confirmed from AWS Console (60 total flows):**
+**Flow structure from AWS Console (60 total flows):**
 
 Each channel has exactly 4 flows:
 - Main-Flow_SPL
@@ -312,7 +315,7 @@ Arabic (ara), English (eng), Original (ols), Arabic 2 (fra) — all AAC 128kbps 
 | Output 720p | SD AVC <10mbps 30-60fps | $0.6660 |
 | Output 1080p | HD AVC <10mbps 30-60fps | $1.3320 |
 | Audio × 4 | Standard Pipeline Audio Only | $1.0560 |
-| **FTA total** | | **$4.2540/hr** |
+| **FTA total** | **$4.2540/hr** |
 
 **SPL/Premium channel (H.265 HDR10) — per hour breakdown:**
 
@@ -322,7 +325,7 @@ Arabic (ara), English (eng), Original (ols), Arabic 2 (fra) — all AAC 128kbps 
 | Output 720p | HD HEVC 30-60fps | $5.3280 |
 | Output 1080p | HD HEVC 30-60fps | $5.3280 |
 | Audio × 4 | Standard Pipeline Audio Only | $1.0560 |
-| **SPL total** | | **$12.7740/hr** |
+| **SPL total** | **$12.7740/hr** |
 
 **Standard match rate:** $4.2540 + $12.7740 = **$17.028/hr**
 
@@ -336,7 +339,7 @@ Arabic (ara), English (eng), Original (ols), Arabic 2 (fra) — all AAC 128kbps 
 | Output 1080p | HD AVC 30-60fps | $1.3320 |
 | Output 1440p | HD AVC 30-60fps | $1.3320 |
 | Audio × 4 | Standard Pipeline Audio Only | $1.0560 |
-| **CH11 total** | | **$8.2440/hr** |
+| **CH11 total** | **$8.2440/hr** |
 
 **4K match rate:** $17.028 + $8.244 = **$25.272/hr**
 **4K add-on only (CH11):** **$8.244/hr**
@@ -355,9 +358,20 @@ Arabic (ara), English (eng), Original (ols), Arabic 2 (fra) — all AAC 128kbps 
 |---|---|---|---|
 | April | $72,585 | 95 | $764 |
 | May | $58,402 | 83 | $703 |
-| **Weighted avg** | | **178** | **$736/match** |
+| **Weighted avg** | **178** | **$736/match** |
 
-**The $736/match is the calculator default.** It includes always-on channel overhead amortized across matches. As transition to on-demand completes, this will converge toward the theoretical $102.17 for a standard 6-hour match.
+**The **Two modes — user selects via toggle in the calculator:**
+
+| Mode | Cost/match | When to use |
+|---|---|---|
+| **Always-on** | **$736/match** | Channels run 24/7 during the broadcast season |
+| **On-demand** | **$102.17/match** | Channels activate per match only |
+
+**Always-on ($736):** Derived from a weighted average across 178 matches and two months of billing data. Includes infrastructure running continuously during the broadcast season.
+
+**On-demand ($102.17):** Derived from the AWS rate card — FTA ($4.254/hr) + SPL ($12.774/hr) × 6 hours × 80% EDP = $102.17 net. This is the cost when channels activate only for the match duration and stop immediately after.
+
+The calculator displays both values side by side and allows the user to toggle between them. Always-on is the default for the current season. On-demand is for planning future seasons.** It includes always-on channel overhead amortized across matches. As transition to on-demand completes, this will converge toward the theoretical $102.17 for a standard 6-hour match.
 
 **Idle channel fee:** $0.01/hr per input + $0.01/hr per output when channel exists but not encoding. For 15 channels: ~$216/month.
 
@@ -389,9 +403,9 @@ Arabic (ara), English (eng), Original (ols), Arabic 2 (fra) — all AAC 128kbps 
 **Key finding from match data:**
 Origination does NOT scale linearly with viewer count. Small matches still generate significant origination because CloudFront warms edge caches regardless of audience size. Only at very high viewer counts (>150K) does origination increase substantially.
 
-**Confirmed origination data points:**
+** origination data points:**
 
-| Match | Viewers | Origination GB | Origination cost |
+| Match | Number of viewers | Origination GB | Origination cost |
 |---|---|---|---|
 | Apr 10 (1 match, 2,650v) | 2,650 | 2,997 GB | $143.86 |
 | Apr 7 per match (1,980v total) | ~990 | 955 GB | $45.84 |
@@ -400,23 +414,50 @@ Origination does NOT scale linearly with viewer count. Small matches still gener
 | Monthly avg April (95 matches) | ~4,500 avg | 426 GB | $20.45 |
 | Monthly avg May (83 matches) | ~5,500 avg | 495 GB | $23.75 |
 
-**Three-tier cost model — derived from confirmed data:**
+**Cost model — three billing anchors with interpolation:**
 
-| Tier | Viewer threshold | Cost/match | Source | Accuracy |
-|---|---|---|---|---|
-| Small | < 10,000 viewers | **$150/match** | Apr 10 ($167), Apr 7/24 avg ($138–$167) | ±15% |
-| Medium | 10,000–150,000 | **$45/match** | Monthly bill weighted average | ±35% |
-| Large | > 150,000 | **$459/match** | May 12 Al-Hilal confirmed | ±5% |
+| Number of viewers | MP cost | Source |
+|---|---|---|
+| 2,650 | **$167.02** | Apr 10 — single match day |
+| 55,790 | **$219.30** | May 17 — single match day |
+| 378,210 | **$459.02** | May 12 — 99.7% viewer allocation |
 
-**Calculator rule:** Auto-select tier based on viewer count. No formula — flat values from confirmed data.
+**Calculator formula:**
+```
+< 2,650 viewers:
+  $167 (floor — minimum per match)
+
+2,650 – 55,790 viewers:
+  $167.02 + (viewers − 2,650) × $0.000976
+
+55,790 – 378,210 viewers:
+  $219.30 + (viewers − 55,790) × $0.000744
+
+> 378,210 viewers:
+  $459.02 + (viewers − 378,210) × $0.000744  (extrapolated)
+```
+
+Interpolated reference costs:
+
+| Number of viewers | MP cost |
+|---|---|
+| 10,000 | $174 |
+| 30,000 | $194 |
+| 55,790 | $219 |
+| 100,000 | $252 |
+| 150,000 | $289 |
+| 300,000 | $401 |
+| 378,210 | $459 |
+
+All values are either billing anchors or straight-line interpolations between two anchors. Accuracy improves as additional match days are added.
 
 **Historical match mode (when daily Cost Explorer cost is known):**
 ```
 Cost = daily MediaPackage cost × viewer share %
 Apply % directly to daily total — do NOT divide by match count first
 
-Example: May 12 daily $483.18, Al-Hilal = 95% of viewers
-Cost = $483.18 × 0.95 = $459.02
+Example: May 12 daily $483.18, Match 1 = 99.7% of viewers
+Cost = $483.18 × 0.997 = $481.73
 ```
 
 **Reference data:**
@@ -435,7 +476,7 @@ The CDN layer is kept separate from Media Elements in the calculator and all rep
 
 ### 7.1 AWS CloudFront
 
-**Contracted flat rates (private pricing — not public tiered rates):**
+** rates (private pricing — not public tiered rates):**
 
 | Region | Net rate/GB | Primary use |
 |---|---|---|
@@ -462,13 +503,12 @@ Bitrate auto-selects by viewer count:
   > 150,000 viewers → 2.8 Mbps
 ```
 
-**Viewing hour cost anchors (from confirmed match data):**
+**Viewing hour cost anchors (from match data):**
 
 | Delivery | Rate/GB | Cost per viewing hour (at 2.8 Mbps) |
 |---|---|---|
 | ME only | $0.007 | $0.00917/hr |
 | EU only | $0.004 | $0.00524/hr |
-| Blended 55%EU/45%ME | $0.00469 | $0.00614/hr |
 
 **Reference data:**
 
@@ -476,8 +516,6 @@ Bitrate auto-selects by viewer count:
 |---|---|---|---|---|---|
 | April | 3,079,836 | $21,558 | 727,230 | $2,909 | **$24,467** |
 | May | 2,054,784 | $14,383 | 2,513,647 | $10,055 | **$24,438** |
-
-**May 2026 EU spike note:** AWS ME region incident forced ~55% of MEA traffic through EU CloudFront as fallback. Under normal operations ME carries majority of delivery traffic.
 
 ### 7.2 Alibaba CDN
 
@@ -520,13 +558,13 @@ Total GB = (FTA_viewers × FTA_Mbps × watch_secs ÷ 8,192)
          + (4K_viewers × 4.5 Mbps × watch_secs ÷ 8,192)
 ```
 
-HDR and 4K bitrates are estimated — no confirmed Conviva quality-tier breakdown available yet.
+HDR and 4K bitrates are estimated — no Conviva quality-tier breakdown available yet.
 
 ### 8.3 HDR and 4K bitrate estimates
 
 | Tier | Max bitrate | Estimated actual | Derivation |
 |---|---|---|---|
-| FTA | 8 Mbps | 2.8–4.0 Mbps (by audience size) | Confirmed from 6 real matches |
+| FTA | 8 Mbps | 2.8–4.0 Mbps (by audience size) | from 6 real matches |
 | HDR | 15 Mbps | ~5.6 Mbps | Estimated: FTA_max_ratio × FTA_actual |
 | 4K | 12 Mbps (CH11 max) | ~4.5 Mbps | Estimated: 4K_max_ratio × FTA_actual |
 
@@ -543,56 +581,45 @@ This correctly models days like April 29 (3 matches with very different viewer c
 
 #### Per-match inputs (repeated for each match added)
 
-**Required inputs:**
+**Main inputs — visible to all users:**
 
 | Input | Default | Notes |
 |---|---|---|
-| Total viewers | — | From Conviva or estimate |
-| Stream duration (hrs) | 6 hrs | Adjustable |
+| Number of viewers | — | Total unique viewers over full match duration |
 | Match type | Standard | Standard / 4K |
-| Delivery region | ME | ME / EU / Mixed |
+| MediaLive mode | Always-on | Always-on: $736/match. On-demand: $102.17/match |
+| Avg watch time (mins) | 50 minutes | Based on confirmed match data average |
+| Delivery region | ME | ME / EU |
 
-**Quality split inputs — visible and adjustable for every match:**
+**Quality split inputs — visible for every match:**
 
 | Input | Default | Notes |
 |---|---|---|
 | % FTA viewers (SDR) | 100% | FTA channel — H.264, 3 renditions |
 | % HDR viewers (Premium) | 0% | SPL channel — H.265, HDR10 |
-| % 4K viewers | 0% | CH11 only — only shown when match type = 4K |
+| % 4K viewers | 0% | CH11 only — shown when match type = 4K |
 
 **Rules for quality split:**
 - The three percentages must always sum to 100%
 - If match type = Standard: % 4K is hidden and forced to 0%
 - If match type = 4K: % 4K is shown and editable
-- Default is 100% FTA because we have no Conviva quality-tier data yet
-- These fields must be clearly visible — not hidden in an advanced section
+- Default is 100% FTA until Conviva quality-tier data is available
 
-**Optional inputs:**
+**Advanced section — collapsed by default, for technical users:**
 
 | Input | Default | Notes |
 |---|---|---|
-| Avg watch time (mins) | Stream duration × 50% | If unknown, assume viewers watch 50% of stream |
-| Override bitrate (Mbps) | Auto from viewer count | Auto-selects: <10K=4.0, 10K-150K=3.9, >150K=2.8 |
+| Bitrate (Mbps) | Auto by viewer count | <10K → 4.0, 10K–150K → 3.9, >150K → 2.8. Override for known bitrate or non-sports content |
+| Stream duration | 6 hours | Enter any number including fractions (e.g. 5.5, 7.25) |
+| CloudFront ME/EU split | 70% ME / 30% EU | Adjust when actual routing data is available |
+| EDP discount rate | 20% | Update if AWS contract is renewed at a different rate |
 
-**Note:** Watch time and bitrate override are clearly marked as optional. The calculator works without them using defaults.
+**Advanced section design rules:**
+- Collapsed by default — business users never see it
+- Single click to expand
+- Any value changed in advanced overrides the main calculator default
+- A small indicator shows on the main form when advanced values have been customised
 
-#### GB calculation per quality tier
-
-When quality split is provided, GB is calculated separately per tier and summed:
-
-```
-FTA GB  = (viewers × FTA%)  × 4.0/3.9/2.8 Mbps × (watch_secs) ÷ 8,192
-HDR GB  = (viewers × HDR%)  × 5.6 Mbps          × (watch_secs) ÷ 8,192
-4K GB   = (viewers × 4K%)   × 4.5 Mbps          × (watch_secs) ÷ 8,192
-
-Total GB = FTA GB + HDR GB + 4K GB
-```
-
-Bitrate auto-selects based on total viewer count (not per-tier viewer count):
-- < 10,000 viewers → 4.0 Mbps (FTA default)
-- 10,000–150,000 → 3.9 Mbps (FTA default)
-- > 150,000 → 2.8 Mbps (FTA default)
-HDR and 4K use fixed estimated bitrates (5.6 and 4.5 Mbps) regardless of viewer count.
 
 ### 9.2 Per-match cost formula
 
@@ -660,7 +687,7 @@ Total 4K add-on at 6hrs: $82.29
 | MediaLive | $736 | Historical average |
 | MediaConnect | $19.26 | Historical average |
 | MediaPackage | $45–$459 | Tier-based on viewers |
-| **Total excl. CloudFront** | **$800–$1,215** | |
+| **Total excl. CloudFront** | **$800–$1,215** |
 
 ### 9.5 Unified calculator — no historical vs forecast split
 
@@ -790,9 +817,9 @@ STEP 9 — Break-even subscriber %:
 |---|---|---|
 | Cost per viewer | total_cost ÷ viewers | Same for all viewers |
 | CloudFront per viewer | cf_cost ÷ viewers | Largest component |
-| MediaLive per viewer | ml_cost ÷ viewers | |
-| MediaPackage per viewer | mp_cost ÷ viewers | |
-| MediaConnect per viewer | mc_cost ÷ viewers | |
+| MediaLive per viewer | ml_cost ÷ viewers |
+| MediaPackage per viewer | mp_cost ÷ viewers |
+| MediaConnect per viewer | mc_cost ÷ viewers |
 
 **Subscriber section:**
 
@@ -801,7 +828,7 @@ STEP 9 — Break-even subscriber %:
 | Subscriber count | viewers × sub_% | How many are subscribers |
 | Cost per subscriber | cost_per_viewer | Same as all viewers |
 | Revenue per subscriber/match (monthly) | $18.67 ÷ matches | What each sub generates |
-| Revenue per subscriber/match (yearly) | $15.56 ÷ matches | |
+| Revenue per subscriber/match (yearly) | $15.56 ÷ matches |
 | **Net per subscriber (monthly)** | cost − revenue | Negative = profit |
 | **Net per subscriber (yearly)** | cost − revenue | Negative = profit |
 | Total subscriber revenue | sub_count × revenue | Total offset from subs |
@@ -963,7 +990,7 @@ At defaults (40K viewers, $447.69/match):
 
 ## 12. Demo Matches
 
-These are confirmed real matches to be used as demos in the calculator. All data is from Conviva and AWS Cost Explorer.
+These are real matches to be used as demos in the calculator. All data is from Conviva and AWS Cost Explorer.
 
 ### Demo 1 — Apr 10: FDL Match (Low viewership)
 
@@ -972,13 +999,13 @@ These are confirmed real matches to be used as demos in the calculator. All data
 | Date | April 10, 2026 |
 | Match type | Standard (FDL) |
 | Matches on day | 1 |
-| Viewers | 2,650 |
+| Number of viewers | 2,650 |
 | Avg watch time | 35.93 mins |
 | Total GB delivered | 2,844.14 GB |
 | GB per viewer | 1.073 GB |
 | Actual bitrate | 4.08 Mbps |
 
-**Confirmed daily costs:**
+** daily costs:**
 
 | Service | Daily cost (= match cost, 1 match) |
 |---|---|
@@ -1007,7 +1034,7 @@ These are confirmed real matches to be used as demos in the calculator. All data
 | GB per viewer | 1.837 GB |
 | Actual bitrate | 2.59 Mbps |
 
-**Confirmed daily costs and Al-Nassr allocation (79%):**
+** daily costs and Al-Nassr allocation (79%):**
 
 | Service | Daily total | Al-Nassr (79%) |
 |---|---|---|
@@ -1041,19 +1068,7 @@ These are confirmed real matches to be used as demos in the calculator. All data
 | MediaPackage | $3,285 |
 | **Total** | **$90,311** |
 
-### 13.3 June 2026 — 0 official matches (testing period)
-
-| Service | Net cost |
-|---|---|
-| CloudFront | ~$200 |
-| MediaConnect | $1,504 |
-| MediaLive | $13,931 |
-| MediaPackage | $354 |
-| **Total** | **~$15,989** |
-
-**Note:** June costs reflect testing activity — not a clean baseline. Used for directional reference only.
-
-### 13.4 Cost share by service
+### 13.3 Cost share by service
 
 | Service | April | May |
 |---|---|---|
@@ -1062,15 +1077,16 @@ These are confirmed real matches to be used as demos in the calculator. All data
 | MediaPackage | 4.4% | 3.6% |
 | MediaConnect | 5.4% | 4.6% |
 
-### 13.5 Confirmed per-match data points from April
+### 13.4  per-match data points from April
 
-| Match | Date | Viewers | ML daily | MC daily | MP daily | CF GB | CF cost |
+| Match | Date | Number of viewers | ML daily | MC daily | MP daily | CF GB | CF cost |
 |---|---|---|---|---|---|---|---|
 | FDL (1 match) | Apr 10 | 2,650 | $4,625 | $322 | $167 | 2,844 | $19.91 |
 | 2 matches | Apr 7 | 1,980 total | $3,933 | $287 | $138 | 1,888 | $13.21 |
-| 2 matches | Apr 24 | 16,310 total | $1,106 | $84 | $134 | 25,839 | $180.87 |
+
 | 3 matches | Apr 29 | 473,120 total | $1,598 | $144 | $228 | 869,167 | $6,084 |
-| 2 matches (May 12) | May 12 | 473,130 total | $2,095 | $126 | $483 | — | $4,593 |
+| 1 match | May 17 | 55,790 | $1,530 | $86 | $219 | — | $281 |
+| 2 matches | May 12 | 473,130 total | $2,095 | $126 | $483 | — | $4,593 |
 
 ---
 
@@ -1082,26 +1098,26 @@ These are confirmed real matches to be used as demos in the calculator. All data
 |---|---|---|---|
 | CloudFront | ME (Bahrain) | $0.007/GB | AWS account manager — contracted |
 | CloudFront | EU (Ireland) | $0.004/GB | AWS account manager — contracted |
-| MediaConnect | Standard flow | $0.1934/hr | Bill × 80% EDP |
-| MediaConnect | LargeInstance (4K/CH11) | $1.368/hr | Bill × 80% EDP |
-| MediaConnect | Regional transfer | $0.008/GB | Bill × 80% EDP |
-| MediaConnect | Inbound Ireland→Frankfurt | Free | Bill confirmed |
+| MediaConnect | Standard flow | $0.1934/hr | From billing data |
+| MediaConnect | LargeInstance (4K/CH11) | $1.368/hr | From billing data |
+| MediaConnect | Regional transfer | $0.008/GB | From billing data |
+| MediaConnect | Inbound Ireland→Frankfurt | Free | Bill |
 | MediaLive | FTA channel | $4.254/hr | Bill rates × channel config |
 | MediaLive | SPL channel | $12.774/hr | Bill rates × channel config |
 | MediaLive | Standard match (FTA+SPL) | $17.028/hr | Sum |
 | MediaLive | CH11_SPL (4K) | $8.244/hr | Bill rates × channel config |
 | MediaLive | 4K match total | $25.272/hr | Sum |
-| MediaLive | Idle channel fee | $0.01/hr/channel | Bill line items |
+| MediaLive | Idle channel fee | $0.01/hr/channel | From billing data |
 | MediaLive | Historical per match | $736/match | Weighted avg Apr+May |
-| MediaPackage | Ingest | $0.036/GB | Bill × 80% EDP |
-| MediaPackage | Origination | $0.048/GB | Bill × 80% EDP |
-| MediaPackage | Small match (<10K) | $150/match | Apr 10 confirmed |
+| MediaPackage | Ingest | $0.036/GB | From billing data |
+| MediaPackage | Origination | $0.048/GB | From billing data |
+| MediaPackage | Small match (<10K) | $150/match | Apr 10 |
 | MediaPackage | Medium match (10K–150K) | $45/match | Monthly bill avg |
-| MediaPackage | Large match (>150K) | $459/match | May 12 confirmed |
+| MediaPackage | Large match (>150K) | $459/match | May 12 |
 
 ### 14.2 Bitrate auto-selection
 
-| Viewers | Default Mbps | Data points |
+| Number of viewers | Default Mbps | Data points |
 |---|---|---|
 | < 10,000 | **4.0 Mbps** | Apr 7 (3.93), Apr 10 (4.08) |
 | 10,000–150,000 | **3.9 Mbps** | Apr 24 (3.60), Apr 29 Al-Taawoun (4.11) |
@@ -1133,4 +1149,41 @@ User can override at any time.
 *Version 3.0 — complete rewrite from v2*
 *All costs are post-EDP-discount net figures as billed by AWS*
 *Overall model accuracy: ±30% — see detailed accuracy statement at top*
-*Based on April–May 2026 billing data (178 matches) and 6 confirmed match data points*
+*Based on April–May 2026 billing data (178 matches) and 6 match data points*
+
+
+---
+
+## 16. Calculator Implementation Addendum (v4.1 — July 10, 2026)
+
+Decisions applied in `index_v4.html` that refine this document:
+
+### 16.1 MediaPackage naming
+The anchor-interpolation formula (§6.3) is unchanged, but the calculator labels results by match size instead of viewer thresholds:
+
+| Label | Viewer range | Cost |
+|---|---|---|
+| Small match | < 10,000 | interpolated from anchors |
+| Medium match | 10,000–150,000 | interpolated from anchors |
+| Large match | > 150,000 | interpolated / extrapolated |
+
+Example display: "MP cost: Large match → $459.02/match".
+
+### 16.2 Bitrate override is FTA-only
+The Advanced bitrate field is labelled **"FTA Bitrate (Mbps)"** and applies to FTA viewers only. HDR (5.6 Mbps) and 4K (4.5 Mbps) remain fixed estimates until Conviva quality-tier data is available. No per-tier override fields.
+
+### 16.3 CloudFront in the CDN layer
+CloudFront is one input in the CDN section; its ME/EU split (default 70/30) lives in Advanced Settings and is applied automatically. See CDN model §2.2 / §9.
+
+### 16.4 4K Upscaling section
+Main input: **matches to upgrade** only. Stream hours (6), avg watch time (45 min) and expected avg 4K viewers (40,000) sit in a collapsed Advanced sub-section. 4K delivery is costed at the **blended CDN rate from the user's entered distribution**, not a fixed CloudFront 70/30 assumption.
+
+### 16.5 Subscriber analysis presentation
+Formulas are unchanged from §10. Presentation shows margins as **revenue − cost** (positive = profit, green; negative = loss, red) to avoid the confusing "negative = profit" convention. An assumptions banner states: viewers and total cost come from the current calculation (CDN at the entered distribution and blended rate); revenue per match = plan price ÷ matches per month; every viewer costs the same to serve. Break-even above 100% is flagged as "not reachable".
+
+### 16.6 UI conventions
+- Thousands separators (1,000,000) on every large-number field and output, app-wide
+- Number-input spinner arrows removed globally
+- "Clear" (not "Reset") clears the form
+- Fixed Monthly Infrastructure shown as a full-width four-tile strip (ML / MC / MP / Total)
+- The ÷ 8,192 conversion is always explained: 1 GB = 8,192 megabits
